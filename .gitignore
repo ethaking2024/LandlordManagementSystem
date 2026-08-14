@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+*.cover
+*.py,cover
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PySide6 / Qt
+*.qmlc
+*.jsc
+*.rcc
+Makefile
+*.pro.user
+
+# Build / Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+*.tar.gz
+*.spec
+
+# PyInstaller
+*.spec
+build/
+dist/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.pgdump
+*.sql
+postgresql_data/
+data/
+
+# Logs
+logs/
+*.log
+
+# Test artifacts
+.test/
+test_results/
+junit.xml
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment specific
+*.local
+local_settings.py
