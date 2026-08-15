@@ -325,7 +325,7 @@ class TestMeterReadingService:
         with pytest.raises(ValidationError, match="Decreasing readings"):
             service.record_reading(meter.id, date(2026, 2, 1), "100")
 
-    def test_record_reading_allows_decrease_in_controlled_replacement(
+    def test_record_final_reading_allows_decrease_in_controlled_replacement(
         self, service: MeterReadingService, mock_meter_repo: MagicMock, mock_reading_repo: MagicMock
     ) -> None:
         meter = self._meter()
@@ -344,9 +344,34 @@ class TestMeterReadingService:
         )
         mock_reading_repo.add.return_value = reading
 
-        result = service.record_reading(meter.id, date(2026, 2, 1), "100", allow_decrease=True)
+        result = service.record_final_reading(meter.id, date(2026, 2, 1), "100")
 
         assert result is not None
+        assert result.value.value == Decimal("100")
+
+    def test_record_final_reading_rejects_duplicate_date(
+        self, service: MeterReadingService, mock_meter_repo: MagicMock, mock_reading_repo: MagicMock
+    ) -> None:
+        meter = self._meter()
+        mock_meter_repo.get.return_value = meter
+        mock_reading_repo.has_reading_on_date.return_value = True
+        with pytest.raises(ConflictError, match="already exists"):
+            service.record_final_reading(meter.id, date(2026, 1, 5), "100")
+
+    def test_record_final_reading_rejects_out_of_sequence_date(
+        self, service: MeterReadingService, mock_meter_repo: MagicMock, mock_reading_repo: MagicMock
+    ) -> None:
+        meter = self._meter()
+        mock_meter_repo.get.return_value = meter
+        mock_reading_repo.has_reading_on_date.return_value = False
+        previous = MeterReading(
+            meter_id=meter.id,
+            reading_date=date(2026, 2, 1),
+            value=MeterReadingValue(Decimal("100")),
+        )
+        mock_reading_repo.get_latest_reading.return_value = previous
+        with pytest.raises(ValidationError, match="before the latest reading"):
+            service.record_final_reading(meter.id, date(2026, 1, 1), "100")
 
     def test_record_reading_rejects_out_of_sequence_date(
         self, service: MeterReadingService, mock_meter_repo: MagicMock, mock_reading_repo: MagicMock
@@ -538,6 +563,174 @@ class TestMeterReplacementService:
         assert old_meter.is_active is False
         mock_meter_repo.add.assert_called_once()
         mock_replacement_repo.add.assert_called_once()
+
+    def test_replace_meter_establishes_initial_reading_on_new_meter(
+        self,
+        service: MeterReplacementService,
+        mock_replacement_repo: MagicMock,
+        mock_meter_repo: MagicMock,
+        mock_reading_repo: MagicMock,
+    ) -> None:
+        old_meter = Meter(
+            rental_space_id=uuid.uuid4(),
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="OLD-001",
+            installation_date=date(2020, 1, 1),
+            is_active=True,
+        )
+        mock_meter_repo.get.return_value = old_meter
+        mock_meter_repo.get_by_identifier.return_value = None
+        mock_reading_repo.has_reading_on_date.return_value = False
+        mock_reading_repo.get_latest_reading.return_value = None
+        new_meter = Meter(
+            rental_space_id=old_meter.rental_space_id,
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="NEW-001",
+            installation_date=date(2026, 3, 1),
+            is_active=True,
+        )
+        mock_meter_repo.add.return_value = new_meter
+        replacement = MeterReplacement(
+            old_meter_id=old_meter.id,
+            new_meter_id=new_meter.id,
+            replaced_on=date(2026, 3, 1),
+        )
+        mock_replacement_repo.add.return_value = replacement
+
+        service.replace_meter(
+            old_meter_id=old_meter.id,
+            new_identifier="NEW-001",
+            replaced_on=date(2026, 3, 1),
+            final_reading_value="1000",
+            initial_reading_value="0",
+        )
+
+        assert mock_reading_repo.add.call_count == 2
+        final_reading = mock_reading_repo.add.call_args_list[0].args[0]
+        initial_reading = mock_reading_repo.add.call_args_list[1].args[0]
+        assert final_reading.meter_id == old_meter.id
+        assert final_reading.reading_date == date(2026, 3, 1)
+        assert final_reading.value.value == Decimal("1000")
+        assert initial_reading.meter_id == new_meter.id
+        assert initial_reading.reading_date == date(2026, 3, 1)
+        assert initial_reading.value.value == Decimal("0")
+
+    def test_replace_meter_preserves_historical_readings(
+        self,
+        service: MeterReplacementService,
+        mock_replacement_repo: MagicMock,
+        mock_meter_repo: MagicMock,
+        mock_reading_repo: MagicMock,
+    ) -> None:
+        old_meter = Meter(
+            rental_space_id=uuid.uuid4(),
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="OLD-001",
+            installation_date=date(2020, 1, 1),
+            is_active=True,
+        )
+        mock_meter_repo.get.return_value = old_meter
+        mock_meter_repo.get_by_identifier.return_value = None
+        mock_reading_repo.has_reading_on_date.return_value = False
+        historical = [
+            MeterReading(
+                meter_id=old_meter.id,
+                reading_date=date(2026, 1, 1),
+                value=MeterReadingValue(Decimal("800")),
+            ),
+            MeterReading(
+                meter_id=old_meter.id,
+                reading_date=date(2026, 2, 1),
+                value=MeterReadingValue(Decimal("950")),
+            ),
+        ]
+        mock_reading_repo.get_latest_reading.side_effect = lambda meter_id: (
+            historical[-1] if meter_id == old_meter.id else None
+        )
+        mock_reading_repo.get_by_meter.return_value = list(historical)
+        new_meter = Meter(
+            rental_space_id=old_meter.rental_space_id,
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="NEW-001",
+            installation_date=date(2026, 3, 1),
+            is_active=True,
+        )
+        mock_meter_repo.add.return_value = new_meter
+        replacement = MeterReplacement(
+            old_meter_id=old_meter.id,
+            new_meter_id=new_meter.id,
+            replaced_on=date(2026, 3, 1),
+        )
+        mock_replacement_repo.add.return_value = replacement
+
+        service.replace_meter(
+            old_meter_id=old_meter.id,
+            new_identifier="NEW-001",
+            replaced_on=date(2026, 3, 1),
+            final_reading_value="1000",
+            initial_reading_value="0",
+        )
+
+        readings_after = mock_reading_repo.get_by_meter.return_value
+        assert len(readings_after) == 2
+        assert readings_after == historical
+        mock_reading_repo.delete.assert_not_called()
+
+    def test_replace_meter_does_not_weaken_normal_reading_validation(
+        self,
+        service: MeterReplacementService,
+        mock_replacement_repo: MagicMock,
+        mock_meter_repo: MagicMock,
+        mock_reading_repo: MagicMock,
+    ) -> None:
+        old_meter = Meter(
+            rental_space_id=uuid.uuid4(),
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="OLD-001",
+            installation_date=date(2020, 1, 1),
+            is_active=True,
+        )
+        mock_meter_repo.get.return_value = old_meter
+        mock_meter_repo.get_by_identifier.return_value = None
+        mock_reading_repo.has_reading_on_date.return_value = False
+        mock_reading_repo.get_latest_reading.return_value = None
+        new_meter = Meter(
+            rental_space_id=old_meter.rental_space_id,
+            utility_type=UtilityType.ELECTRICITY,
+            identifier="NEW-001",
+            installation_date=date(2026, 3, 1),
+            is_active=True,
+        )
+        mock_meter_repo.add.return_value = new_meter
+        replacement = MeterReplacement(
+            old_meter_id=old_meter.id,
+            new_meter_id=new_meter.id,
+            replaced_on=date(2026, 3, 1),
+        )
+        mock_replacement_repo.add.return_value = replacement
+
+        service.replace_meter(
+            old_meter_id=old_meter.id,
+            new_identifier="NEW-001",
+            replaced_on=date(2026, 3, 1),
+            final_reading_value="1000",
+            initial_reading_value="0",
+        )
+
+        final_reading = mock_reading_repo.add.call_args_list[0].args[0]
+        initial_reading = mock_reading_repo.add.call_args_list[1].args[0]
+
+        mock_reading_repo.get_latest_reading.return_value = final_reading
+        reading_service = MeterReadingService(mock_reading_repo, mock_meter_repo)
+        with pytest.raises(ValidationError, match="Decreasing readings"):
+            reading_service.record_reading(
+                old_meter.id,
+                date(2026, 3, 5),
+                "900",
+            )
+
+        assert final_reading.value.value == Decimal("1000")
+        assert initial_reading.value.value == Decimal("0")
 
     def test_replace_meter_rejects_inactive_old(self, service: MeterReplacementService, mock_meter_repo: MagicMock) -> None:
         old_meter = Meter(

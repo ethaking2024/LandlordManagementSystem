@@ -25,7 +25,49 @@ class MeterReadingService:
         reading_date: date,
         value: Decimal | str,
         notes: str | None = None,
-        allow_decrease: bool = False,
+    ) -> MeterReading:
+        """Record a normal meter reading.
+
+        A reading lower than the previous valid reading is always rejected here.
+        Decreasing readings are only permitted via the controlled meter-replacement
+        workflow (see record_final_reading).
+        """
+        return self._record_reading(
+            meter_id=meter_id,
+            reading_date=reading_date,
+            value=value,
+            notes=notes,
+            allow_decrease=False,
+        )
+
+    def record_final_reading(
+        self,
+        meter_id: uuid.UUID,
+        reading_date: date,
+        value: Decimal | str,
+        notes: str | None = None,
+    ) -> MeterReading:
+        """Record the final reading of an old meter during a controlled meter replacement.
+
+        This is the only path that permits a value lower than the previous reading,
+        because a meter may be faulty before replacement. It is intended exclusively
+        for the meter-replacement workflow; normal readings must use record_reading.
+        """
+        return self._record_reading(
+            meter_id=meter_id,
+            reading_date=reading_date,
+            value=value,
+            notes=notes,
+            allow_decrease=True,
+        )
+
+    def _record_reading(
+        self,
+        meter_id: uuid.UUID,
+        reading_date: date,
+        value: Decimal | str,
+        notes: str | None,
+        allow_decrease: bool,
     ) -> MeterReading:
         meter = self._meter_repository.get(meter_id)
         if not meter:

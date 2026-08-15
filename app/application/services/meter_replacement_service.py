@@ -52,15 +52,15 @@ class MeterReplacementService:
         if self._meter_repository.get_by_identifier(new_identifier.strip()):
             raise NotFoundError(f"Meter with identifier '{new_identifier.strip()}' already exists")
 
-        # Final reading on the old meter. Decreasing values are allowed during a
-        # controlled replacement, but the final reading must not be for a date that
-        # conflicts with an existing reading.
-        self._reading_service.record_reading(
+        # Final reading on the old meter. The dedicated controlled-replacement path
+        # permits a decreasing value (the meter may have been faulty), while normal
+        # reading validation still applies: duplicate dates and out-of-sequence dates
+        # remain rejected.
+        self._reading_service.record_final_reading(
             meter_id=old_meter_id,
             reading_date=replaced_on,
             value=final_reading_value,
             notes=notes,
-            allow_decrease=True,
         )
 
         # Deactivate the old meter; its history remains intact.
@@ -78,7 +78,8 @@ class MeterReplacementService:
         )
         new_meter = self._meter_repository.add(new_meter)
 
-        # Initial reading on the new meter (no prior readings, so no decrease check).
+        # Initial reading on the new meter via the normal path (no prior readings,
+        # so no decrease check applies).
         self._reading_service.record_reading(
             meter_id=new_meter.id,
             reading_date=replaced_on,
