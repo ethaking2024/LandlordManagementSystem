@@ -45,3 +45,18 @@ class PhoneNumber:
 
     def __str__(self) -> str:
         return self.number
+
+
+@dataclass(frozen=True, slots=True)
+class MeterReadingValue:
+    """A non-negative meter reading value (e.g. kWh or units)."""
+
+    value: Decimal
+
+    def __post_init__(self) -> None:
+        if self.value < 0:
+            raise ValueError("Reading value cannot be negative")
+        object.__setattr__(self, "value", self.value.quantize(Decimal("0.001")))
+
+    def __str__(self) -> str:
+        return str(self.value)

@@ -1,8 +1,25 @@
 from __future__ import annotations
 
-from app.domain.entities import Agreement, Owner, Property, RentalSpace, Tenant
-from app.domain.enums import AgreementStatus, SpaceType
-from app.domain.value_objects import Money, PhoneNumber
+from app.domain.entities import (
+    Agreement,
+    Meter,
+    MeterReading,
+    MeterReplacement,
+    Owner,
+    Property,
+    RentalSpace,
+    Tenant,
+    UtilityConfig,
+    UtilityTariff,
+)
+from app.domain.enums import (
+    AgreementStatus,
+    ElectricityConfigType,
+    SpaceType,
+    UtilityType,
+    WaterConfigType,
+)
+from app.domain.value_objects import MeterReadingValue, Money, PhoneNumber
 
 __all__ = [
     "Owner",
@@ -14,4 +31,13 @@ __all__ = [
     "AgreementStatus",
     "Money",
     "PhoneNumber",
+    "UtilityType",
+    "ElectricityConfigType",
+    "WaterConfigType",
+    "UtilityConfig",
+    "Meter",
+    "MeterReading",
+    "MeterReadingValue",
+    "UtilityTariff",
+    "MeterReplacement",
 ]

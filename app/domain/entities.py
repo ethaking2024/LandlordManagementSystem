@@ -4,8 +4,15 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
-from app.domain.enums import AgreementStatus, SpaceType
-from app.domain.value_objects import Money, PhoneNumber
+from app.domain.enums import (
+    AgreementStatus,
+    ElectricityConfigType,
+    SpaceType,
+    UtilityType,
+    WaterConfigType,
+)
+from app.domain.value_objects import MeterReadingValue, Money, PhoneNumber
+from app.shared.dates.bs import BSCalendar
 
 
 def utcnow() -> datetime:
@@ -130,3 +137,140 @@ class Agreement:
     def cancel_agreement(self) -> None:
         self.status = AgreementStatus.CANCELLED
         self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class UtilityConfig:
+    rental_space_id: uuid.UUID
+    utility_type: UtilityType
+    config_type: str
+    fixed_amount: Money | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.utility_type, UtilityType):
+            raise ValueError(f"Invalid utility type: {self.utility_type}")
+        if self.utility_type == UtilityType.ELECTRICITY:
+            valid = {c.value for c in ElectricityConfigType}
+        else:
+            valid = {c.value for c in WaterConfigType}
+        if self.config_type not in valid:
+            raise ValueError(f"Invalid config type '{self.config_type}' for {self.utility_type.value}")
+        if self.fixed_amount is not None:
+            if not isinstance(self.fixed_amount, Money):
+                raise ValueError("Fixed amount must be a Money object")
+            if self.fixed_amount.amount < 0:
+                raise ValueError("Fixed amount cannot be negative")
+        if self.config_type == ElectricityConfigType.FIXED.value and self.fixed_amount is None:
+            raise ValueError("Fixed utility config requires a fixed amount")
+
+    def update_config(self, config_type: str, fixed_amount: Money | None = None) -> None:
+        if self.utility_type == UtilityType.ELECTRICITY:
+            valid = {c.value for c in ElectricityConfigType}
+        else:
+            valid = {c.value for c in WaterConfigType}
+        if config_type not in valid:
+            raise ValueError(f"Invalid config type '{config_type}' for {self.utility_type.value}")
+        if config_type == ElectricityConfigType.FIXED.value and fixed_amount is None:
+            raise ValueError("Fixed utility config requires a fixed amount")
+        if fixed_amount is not None and fixed_amount.amount < 0:
+            raise ValueError("Fixed amount cannot be negative")
+        self.config_type = config_type
+        self.fixed_amount = fixed_amount
+        self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class Meter:
+    rental_space_id: uuid.UUID
+    utility_type: UtilityType
+    identifier: str
+    installation_date: date
+    is_active: bool = True
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.utility_type, UtilityType):
+            raise ValueError(f"Invalid utility type: {self.utility_type}")
+        if not self.identifier or not self.identifier.strip():
+            raise ValueError("Meter identifier is required")
+        self.identifier = self.identifier.strip()
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    def deactivate(self) -> None:
+        self.is_active = False
+        self.updated_at = utcnow()
+
+    def activate(self) -> None:
+        self.is_active = True
+        self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class MeterReading:
+    meter_id: uuid.UUID
+    reading_date: date
+    value: MeterReadingValue
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, MeterReadingValue):
+            raise ValueError("Reading value must be a MeterReadingValue object")
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    @property
+    def bs_display(self) -> str:
+        return BSCalendar.format_bs(self.reading_date)
+
+    def consumption_since(self, previous: MeterReading) -> MeterReadingValue:
+        consumption = self.value.value - previous.value.value
+        if consumption < 0:
+            raise ValueError("Consumption cannot be negative")
+        return MeterReadingValue(consumption)
+
+
+@dataclass(slots=True)
+class UtilityTariff:
+    utility_type: UtilityType
+    effective_from: date
+    rate: Money
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.utility_type, UtilityType):
+            raise ValueError(f"Invalid utility type: {self.utility_type}")
+        if not isinstance(self.rate, Money):
+            raise ValueError("Tariff rate must be a Money object")
+        if self.rate.amount < 0:
+            raise ValueError("Tariff rate cannot be negative")
+        if self.notes:
+            self.notes = self.notes.strip()
+
+
+@dataclass(slots=True)
+class MeterReplacement:
+    old_meter_id: uuid.UUID
+    new_meter_id: uuid.UUID
+    replaced_on: date
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if self.old_meter_id == self.new_meter_id:
+            raise ValueError("Old and new meter cannot be the same")
+        if self.notes:
+            self.notes = self.notes.strip()

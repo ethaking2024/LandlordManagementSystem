@@ -15,3 +15,19 @@ class AgreementStatus(StrEnum):
     ACTIVE = "active"
     ENDED = "ended"
     CANCELLED = "cancelled"
+
+
+class UtilityType(StrEnum):
+    ELECTRICITY = "electricity"
+    WATER = "water"
+
+
+class ElectricityConfigType(StrEnum):
+    FIXED = "fixed"
+    METERED = "metered"
+
+
+class WaterConfigType(StrEnum):
+    NO_CHARGE = "no_charge"
+    FIXED = "fixed"
+    METERED = "metered"
