@@ -7,6 +7,7 @@ from app.infrastructure.repositories.deposit_repository import DepositRepository
 from app.infrastructure.repositories.deposit_settlement_repository import (
     DepositSettlementRepository,
 )
+from app.infrastructure.repositories.expense_repository import ExpenseRepository
 from app.infrastructure.repositories.meter_reading_repository import MeterReadingRepository
 from app.infrastructure.repositories.meter_replacement_repository import MeterReplacementRepository
 from app.infrastructure.repositories.meter_repository import MeterRepository
@@ -38,4 +39,5 @@ __all__ = [
     "PaymentAllocationRepository",
     "DepositRepository",
     "DepositSettlementRepository",
+    "ExpenseRepository",
 ]

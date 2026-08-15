@@ -11,6 +11,8 @@ from app.domain.enums import (
     BillStatus,
     DepositStatus,
     ElectricityConfigType,
+    ExpenseCategory,
+    ExpenseStatus,
     PaymentMethod,
     PaymentStatus,
     SpaceType,
@@ -571,4 +573,50 @@ class DepositSettlement:
         if self.is_complete:
             raise ValueError("Settlement already has a recorded refund")
         self.refund_amount = refund_amount
+        self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class Expense:
+    """A landlord expense associated with a property (or a specific rental space).
+
+    Expenses are money paid out by the landlord, never automatically charged to
+    a tenant or converted into a bill. A void expense stays in history but no
+    longer counts toward expense totals.
+    """
+
+    property_id: uuid.UUID
+    expense_date: date
+    category: ExpenseCategory
+    amount: Money
+    description: str | None = None
+    rental_space_id: uuid.UUID | None = None
+    reference: str | None = None
+    status: ExpenseStatus = ExpenseStatus.RECORDED
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.category, ExpenseCategory):
+            raise ValueError(f"Invalid expense category: {self.category}")
+        if not isinstance(self.amount, Money):
+            raise ValueError("Expense amount must be a Money object")
+        if self.amount.amount <= 0:
+            raise ValueError("Expense amount must be greater than zero")
+        if not isinstance(self.status, ExpenseStatus):
+            raise ValueError(f"Invalid expense status: {self.status}")
+        if self.description:
+            self.description = self.description.strip()
+        if self.reference:
+            self.reference = self.reference.strip()
+
+    @property
+    def is_recorded(self) -> bool:
+        return self.status == ExpenseStatus.RECORDED
+
+    def void(self) -> None:
+        if self.status == ExpenseStatus.VOID:
+            raise ValueError("Expense is already void")
+        self.status = ExpenseStatus.VOID
         self.updated_at = utcnow()

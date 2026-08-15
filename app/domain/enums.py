@@ -61,3 +61,17 @@ class DepositStatus(StrEnum):
     HELD = "held"
     SETTLED = "settled"
     VOID = "void"
+
+
+class ExpenseStatus(StrEnum):
+    RECORDED = "recorded"
+    VOID = "void"
+
+
+class ExpenseCategory(StrEnum):
+    ELECTRICAL = "electrical"
+    PLUMBING = "plumbing"
+    CLEANING = "cleaning"
+    TAX = "tax"
+    COMMON_AREA = "common_area"
+    OTHER = "other"

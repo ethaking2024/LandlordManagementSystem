@@ -20,7 +20,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.domain.enums import AgreementStatus, BillStatus, DepositStatus, PaymentStatus
+from app.domain.enums import (
+    AgreementStatus,
+    BillStatus,
+    DepositStatus,
+    ExpenseStatus,
+    PaymentStatus,
+)
 from app.infrastructure.persistence.base import Base
 
 
@@ -55,6 +61,7 @@ class PropertyModel(Base):
 
     owner: Mapped[OwnerModel] = relationship("OwnerModel", back_populates="properties", lazy="selectin")
     rental_spaces: Mapped[list[RentalSpaceModel]] = relationship("RentalSpaceModel", back_populates="property", lazy="selectin")
+    expenses: Mapped[list[ExpenseModel]] = relationship("ExpenseModel", back_populates="property", lazy="selectin")
 
     __table_args__ = (
         Index("ix_properties_owner_id", "owner_id"),
@@ -81,6 +88,7 @@ class RentalSpaceModel(Base):
     agreements: Mapped[list[AgreementModel]] = relationship("AgreementModel", back_populates="rental_space", lazy="selectin")
     utility_configs: Mapped[list[UtilityConfigModel]] = relationship("UtilityConfigModel", back_populates="rental_space", lazy="selectin")
     meters: Mapped[list[MeterModel]] = relationship("MeterModel", back_populates="rental_space", lazy="selectin")
+    expenses: Mapped[list[ExpenseModel]] = relationship("ExpenseModel", back_populates="rental_space", lazy="selectin")
 
     __table_args__ = (
         Index("ix_rental_spaces_property_id", "property_id"),
@@ -525,3 +533,46 @@ class DepositDeductionModel(Base):
 
     def __repr__(self) -> str:
         return f"<DepositDeductionModel(id={self.id}, settlement_id={self.settlement_id}, amount={self.amount})>"
+
+
+class ExpenseModel(Base):
+    __tablename__ = "expenses"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    property_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("properties.id", ondelete="RESTRICT"), nullable=False
+    )
+    rental_space_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("rental_spaces.id", ondelete="RESTRICT"), nullable=True
+    )
+    expense_date: Mapped[date] = mapped_column(Date, nullable=False)
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=ExpenseStatus.RECORDED.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    property: Mapped[PropertyModel] = relationship("PropertyModel", back_populates="expenses", lazy="selectin")
+    rental_space: Mapped[RentalSpaceModel | None] = relationship("RentalSpaceModel", back_populates="expenses", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_expenses_property_id", "property_id"),
+        Index("ix_expenses_rental_space_id", "rental_space_id"),
+        Index("ix_expenses_expense_date", "expense_date"),
+        Index("ix_expenses_category", "category"),
+        Index("ix_expenses_status", "status"),
+        CheckConstraint("amount > 0", name="ck_expenses_amount_positive"),
+        CheckConstraint(
+            "category IN ('electrical', 'plumbing', 'cleaning', 'tax', 'common_area', 'other')",
+            name="ck_expenses_category",
+        ),
+        CheckConstraint("status IN ('recorded', 'void')", name="ck_expenses_status"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ExpenseModel(id={self.id}, property_id={self.property_id}, "
+            f"category={self.category!r}, amount={self.amount}, status={self.status!r})>"
+        )
