@@ -55,3 +55,9 @@ class PaymentMethod(StrEnum):
     BANK_TRANSFER = "bank_transfer"
     ONLINE = "online"
     OTHER = "other"
+
+
+class DepositStatus(StrEnum):
+    HELD = "held"
+    SETTLED = "settled"
+    VOID = "void"

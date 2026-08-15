@@ -9,6 +9,7 @@ from app.domain.enums import (
     AgreementStatus,
     BillCategory,
     BillStatus,
+    DepositStatus,
     ElectricityConfigType,
     PaymentMethod,
     PaymentStatus,
@@ -447,3 +448,127 @@ class PaymentAllocation:
             raise ValueError("Allocated amount must be a Money object")
         if self.allocated_amount.amount <= 0:
             raise ValueError("Allocated amount must be greater than zero")
+
+
+@dataclass(slots=True)
+class Deposit:
+    """A security deposit actually received from a tenant.
+
+    Deposits are records of money received that are held separately from bill
+    payments and tenant credit. They are never physically deleted; they transition
+    through HELD -> SETTLED or HELD -> VOID, preserving full history.
+    """
+
+    agreement_id: uuid.UUID
+    tenant_id: uuid.UUID
+    amount: Money
+    received_date: date
+    status: DepositStatus = DepositStatus.HELD
+    reference: str | None = None
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.amount, Money):
+            raise ValueError("Deposit amount must be a Money object")
+        if self.amount.amount <= 0:
+            raise ValueError("Deposit amount must be greater than zero")
+        if not isinstance(self.status, DepositStatus):
+            raise ValueError(f"Invalid deposit status: {self.status}")
+        if self.reference:
+            self.reference = self.reference.strip()
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    @property
+    def is_held(self) -> bool:
+        return self.status == DepositStatus.HELD
+
+    def settle(self) -> None:
+        if self.status != DepositStatus.HELD:
+            raise ValueError(f"Cannot settle a deposit with status {self.status.value}")
+        self.status = DepositStatus.SETTLED
+        self.updated_at = utcnow()
+
+    def void(self) -> None:
+        if self.status != DepositStatus.HELD:
+            raise ValueError(f"Cannot void a deposit with status {self.status.value}")
+        self.status = DepositStatus.VOID
+        self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class DepositDeduction:
+    """A single deduction applied to a deposit at settlement time."""
+
+    amount: Money
+    reason: str
+    settlement_id: uuid.UUID | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.amount, Money):
+            raise ValueError("Deduction amount must be a Money object")
+        if self.amount.amount <= 0:
+            raise ValueError("Deduction amount must be greater than zero")
+        if not self.reason or not self.reason.strip():
+            raise ValueError("Deduction reason is required")
+        self.reason = self.reason.strip()
+
+
+@dataclass(slots=True)
+class DepositSettlement:
+    """The settlement of a deposit when its agreement ends.
+
+    A settlement records deductions and a refund. It is complete once a refund is
+    recorded; before that point only deductions are captured. A deposit may be
+    settled exactly once and, once settled, the record is immutable history.
+    """
+
+    deposit_id: uuid.UUID
+    settlement_date: date
+    deductions: list[DepositDeduction] = field(default_factory=list)
+    refund_amount: Money | None = None
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if self.refund_amount is not None and not isinstance(self.refund_amount, Money):
+            raise ValueError("Refund amount must be a Money object")
+        if self.refund_amount is not None and self.refund_amount.amount < 0:
+            raise ValueError("Refund amount cannot be negative")
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    @property
+    def total_deductions(self) -> Money:
+        total = Money(Decimal("0"))
+        for deduction in self.deductions:
+            total = total + deduction.amount
+        return total
+
+    @property
+    def is_complete(self) -> bool:
+        return self.refund_amount is not None
+
+    def add_deduction(self, deduction: DepositDeduction) -> None:
+        if self.is_complete:
+            raise ValueError("Cannot add deductions to a completed settlement")
+        deduction.settlement_id = self.id
+        self.deductions.append(deduction)
+        self.updated_at = utcnow()
+
+    def record_refund(self, refund_amount: Money) -> None:
+        if not isinstance(refund_amount, Money):
+            raise ValueError("Refund amount must be a Money object")
+        if refund_amount.amount < 0:
+            raise ValueError("Refund amount cannot be negative")
+        if self.is_complete:
+            raise ValueError("Settlement already has a recorded refund")
+        self.refund_amount = refund_amount
+        self.updated_at = utcnow()

@@ -20,7 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.domain.enums import AgreementStatus, BillStatus, PaymentStatus
+from app.domain.enums import AgreementStatus, BillStatus, DepositStatus, PaymentStatus
 from app.infrastructure.persistence.base import Base
 
 
@@ -134,6 +134,7 @@ class AgreementModel(Base):
     tenant: Mapped[TenantModel] = relationship("TenantModel", back_populates="agreements", lazy="selectin")
     rental_space: Mapped[RentalSpaceModel] = relationship("RentalSpaceModel", back_populates="agreements", lazy="selectin")
     bills: Mapped[list[BillModel]] = relationship("BillModel", back_populates="agreement", lazy="selectin")
+    deposits: Mapped[list[DepositModel]] = relationship("DepositModel", back_populates="agreement", lazy="selectin")
 
     __table_args__ = (
         Index("ix_agreements_tenant_id", "tenant_id"),
@@ -434,3 +435,93 @@ class PaymentAllocationModel(Base):
             f"<PaymentAllocationModel(id={self.id}, payment_id={self.payment_id}, "
             f"bill_id={self.bill_id}, allocated_amount={self.allocated_amount})>"
         )
+
+
+class DepositModel(Base):
+    __tablename__ = "deposits"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agreement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agreements.id", ondelete="RESTRICT"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    received_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=DepositStatus.HELD.value)
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    agreement: Mapped[AgreementModel] = relationship("AgreementModel", back_populates="deposits", lazy="selectin")
+    settlement: Mapped[DepositSettlementModel | None] = relationship(
+        "DepositSettlementModel", back_populates="deposit", uselist=False, lazy="selectin"
+    )
+
+    __table_args__ = (
+        Index("ix_deposits_agreement_id", "agreement_id"),
+        Index("ix_deposits_tenant_id", "tenant_id"),
+        Index("ix_deposits_status", "status"),
+        Index("ix_deposits_received_date", "received_date"),
+        CheckConstraint("amount > 0", name="ck_deposits_amount_positive"),
+        CheckConstraint("status IN ('held', 'settled', 'void')", name="ck_deposits_status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DepositModel(id={self.id}, agreement_id={self.agreement_id}, amount={self.amount}, status={self.status!r})>"
+
+
+class DepositSettlementModel(Base):
+    __tablename__ = "deposit_settlements"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deposit_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("deposits.id", ondelete="RESTRICT"), nullable=False
+    )
+    settlement_date: Mapped[date] = mapped_column(Date, nullable=False)
+    refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    deposit: Mapped[DepositModel] = relationship("DepositModel", back_populates="settlement", lazy="selectin")
+    deductions: Mapped[list[DepositDeductionModel]] = relationship(
+        "DepositDeductionModel", back_populates="settlement", lazy="selectin"
+    )
+
+    __table_args__ = (
+        Index("ix_deposit_settlements_deposit_id", "deposit_id"),
+        UniqueConstraint("deposit_id", name="uq_deposit_settlements_deposit"),
+        CheckConstraint(
+            "refund_amount IS NULL OR refund_amount >= 0", name="ck_deposit_settlements_refund_non_negative"
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DepositSettlementModel(id={self.id}, deposit_id={self.deposit_id}, complete={self.refund_amount is not None})>"
+
+
+class DepositDeductionModel(Base):
+    __tablename__ = "deposit_deductions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    settlement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("deposit_settlements.id", ondelete="CASCADE"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    settlement: Mapped[DepositSettlementModel] = relationship(
+        "DepositSettlementModel", back_populates="deductions", lazy="selectin"
+    )
+
+    __table_args__ = (
+        Index("ix_deposit_deductions_settlement_id", "settlement_id"),
+        CheckConstraint("amount > 0", name="ck_deposit_deductions_amount_positive"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DepositDeductionModel(id={self.id}, settlement_id={self.settlement_id}, amount={self.amount})>"
