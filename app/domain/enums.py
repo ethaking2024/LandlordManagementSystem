@@ -1,0 +1,17 @@
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class SpaceType(StrEnum):
+    WHOLE_FLOOR = "whole_floor"
+    FLAT = "flat"
+    ROOM = "room"
+    ROOM_GROUP = "room_group"
+    OTHER = "other"
+
+
+class AgreementStatus(StrEnum):
+    ACTIVE = "active"
+    ENDED = "ended"
+    CANCELLED = "cancelled"
