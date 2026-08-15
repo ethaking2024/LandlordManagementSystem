@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.infrastructure.repositories.agreement_repository import AgreementRepository
 from app.infrastructure.repositories.base import RepositoryBase
+from app.infrastructure.repositories.bill_repository import BillRepository
 from app.infrastructure.repositories.meter_reading_repository import MeterReadingRepository
 from app.infrastructure.repositories.meter_replacement_repository import MeterReplacementRepository
 from app.infrastructure.repositories.meter_repository import MeterRepository
@@ -24,4 +25,5 @@ __all__ = [
     "MeterReadingRepository",
     "UtilityTariffRepository",
     "MeterReplacementRepository",
+    "BillRepository",
 ]

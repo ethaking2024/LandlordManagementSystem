@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.application.services import (
     AgreementService,
+    BillingService,
     MeterReadingService,
     MeterReplacementService,
     MeterService,
@@ -24,4 +25,5 @@ __all__ = [
     "MeterReadingService",
     "UtilityTariffService",
     "MeterReplacementService",
+    "BillingService",
 ]

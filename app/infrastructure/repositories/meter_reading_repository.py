@@ -64,6 +64,16 @@ class MeterReadingRepository(RepositoryBase[MeterReading]):
         model = self.session.scalar(stmt)
         return self._to_entity(model) if model else None
 
+    def get_latest_reading_at_or_before(self, meter_id: uuid.UUID, reading_date: date) -> MeterReading | None:
+        stmt = (
+            select(MeterReadingModel)
+            .where(MeterReadingModel.meter_id == meter_id, MeterReadingModel.reading_date <= reading_date)
+            .order_by(MeterReadingModel.reading_date.desc())
+            .limit(1)
+        )
+        model = self.session.scalar(stmt)
+        return self._to_entity(model) if model else None
+
     def get_reading_on_date(self, meter_id: uuid.UUID, reading_date: date) -> MeterReading | None:
         stmt = select(MeterReadingModel).where(
             MeterReadingModel.meter_id == meter_id,

@@ -31,3 +31,15 @@ class WaterConfigType(StrEnum):
     NO_CHARGE = "no_charge"
     FIXED = "fixed"
     METERED = "metered"
+
+
+class BillStatus(StrEnum):
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+    VOID = "void"
+
+
+class BillCategory(StrEnum):
+    RENT = "rent"
+    ELECTRICITY = "electricity"
+    WATER = "water"

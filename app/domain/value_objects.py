@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 
@@ -60,3 +61,22 @@ class MeterReadingValue:
 
     def __str__(self) -> str:
         return str(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class BillingPeriod:
+    """An immutable billing period defined by canonical AD start and end dates."""
+
+    start: date
+    end: date
+
+    def __post_init__(self) -> None:
+        if self.end < self.start:
+            raise ValueError("Billing period end cannot be before start")
+
+    @property
+    def days(self) -> int:
+        return (self.end - self.start).days + 1
+
+    def contains(self, day: date) -> bool:
+        return self.start <= day <= self.end

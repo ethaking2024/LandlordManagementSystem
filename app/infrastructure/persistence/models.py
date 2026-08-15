@@ -20,7 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.domain.enums import AgreementStatus
+from app.domain.enums import AgreementStatus, BillStatus
 from app.infrastructure.persistence.base import Base
 
 
@@ -132,6 +132,7 @@ class AgreementModel(Base):
 
     tenant: Mapped[TenantModel] = relationship("TenantModel", back_populates="agreements", lazy="selectin")
     rental_space: Mapped[RentalSpaceModel] = relationship("RentalSpaceModel", back_populates="agreements", lazy="selectin")
+    bills: Mapped[list[BillModel]] = relationship("BillModel", back_populates="agreement", lazy="selectin")
 
     __table_args__ = (
         Index("ix_agreements_tenant_id", "tenant_id"),
@@ -283,3 +284,85 @@ class MeterReplacementModel(Base):
 
     def __repr__(self) -> str:
         return f"<MeterReplacementModel(id={self.id}, old_meter_id={self.old_meter_id}, new_meter_id={self.new_meter_id})>"
+
+
+class BillModel(Base):
+    __tablename__ = "bills"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agreement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agreements.id", ondelete="RESTRICT"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+    rental_space_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("rental_spaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    billing_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=BillStatus.DRAFT.value)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    agreement: Mapped[AgreementModel] = relationship("AgreementModel", back_populates="bills", lazy="selectin")
+    lines: Mapped[list[BillLineModel]] = relationship(
+        "BillLineModel", back_populates="bill", lazy="selectin", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_bills_agreement_id", "agreement_id"),
+        Index("ix_bills_tenant_id", "tenant_id"),
+        Index("ix_bills_rental_space_id", "rental_space_id"),
+        Index("ix_bills_status", "status"),
+        Index("ix_bills_period_start", "period_start"),
+        UniqueConstraint("agreement_id", "period_start", "period_end", name="uq_bills_agreement_period"),
+        CheckConstraint("period_end >= period_start", name="ck_bills_period_end_after_start"),
+        CheckConstraint("total_amount >= 0", name="ck_bills_total_non_negative"),
+        CheckConstraint("status IN ('draft', 'confirmed', 'void')", name="ck_bills_status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<BillModel(id={self.id}, agreement_id={self.agreement_id}, status={self.status!r})>"
+
+
+class BillLineModel(Base):
+    __tablename__ = "bill_lines"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bill_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="CASCADE"), nullable=False
+    )
+    category: Mapped[str] = mapped_column(String(20), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+    unit_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    config_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    meter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meters.id", ondelete="RESTRICT"), nullable=True
+    )
+    meter_identifier: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    previous_reading: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+    current_reading: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+    consumption: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+    tariff_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    tariff_effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    bill: Mapped[BillModel] = relationship("BillModel", back_populates="lines", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_bill_lines_bill_id", "bill_id"),
+        Index("ix_bill_lines_category", "category"),
+        Index("ix_bill_lines_meter_id", "meter_id"),
+        CheckConstraint("amount >= 0", name="ck_bill_lines_amount_non_negative"),
+        CheckConstraint("category IN ('rent', 'electricity', 'water')", name="ck_bill_lines_category"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<BillLineModel(id={self.id}, bill_id={self.bill_id}, category={self.category!r}, amount={self.amount})>"

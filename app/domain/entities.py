@@ -3,15 +3,18 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from app.domain.enums import (
     AgreementStatus,
+    BillCategory,
+    BillStatus,
     ElectricityConfigType,
     SpaceType,
     UtilityType,
     WaterConfigType,
 )
-from app.domain.value_objects import MeterReadingValue, Money, PhoneNumber
+from app.domain.value_objects import BillingPeriod, MeterReadingValue, Money, PhoneNumber
 from app.shared.dates.bs import BSCalendar
 
 
@@ -274,3 +277,108 @@ class MeterReplacement:
             raise ValueError("Old and new meter cannot be the same")
         if self.notes:
             self.notes = self.notes.strip()
+
+
+@dataclass(slots=True)
+class BillLine:
+    """A single line item on a bill that preserves the financial values used.
+
+    The `amount` is authoritative. The quantity/rate and snapshot fields capture
+    the historical calculation basis so a confirmed bill remains explainable even
+    after agreements, tariffs, utility configs, or meter readings change.
+    """
+
+    category: BillCategory
+    description: str
+    amount: Money
+    bill_id: uuid.UUID | None = None
+    quantity: Decimal | None = None
+    unit_rate: Money | None = None
+    config_type: str | None = None
+    meter_id: uuid.UUID | None = None
+    meter_identifier: str | None = None
+    previous_reading: Decimal | None = None
+    current_reading: Decimal | None = None
+    consumption: Decimal | None = None
+    tariff_rate: Money | None = None
+    tariff_effective_from: date | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.category, BillCategory):
+            raise ValueError(f"Invalid bill category: {self.category}")
+        if not self.description or not self.description.strip():
+            raise ValueError("Bill line description is required")
+        if not isinstance(self.amount, Money):
+            raise ValueError("Bill line amount must be a Money object")
+        if self.quantity is not None and self.quantity < 0:
+            raise ValueError("Bill line quantity cannot be negative")
+        if self.consumption is not None and self.consumption < 0:
+            raise ValueError("Bill line consumption cannot be negative")
+        if self.unit_rate is not None and not isinstance(self.unit_rate, Money):
+            raise ValueError("Bill line unit rate must be a Money object")
+        if self.tariff_rate is not None and not isinstance(self.tariff_rate, Money):
+            raise ValueError("Bill line tariff rate must be a Money object")
+        self.description = self.description.strip()
+
+
+@dataclass(slots=True)
+class Bill:
+    """A billing period bill with line items.
+
+    The total is always derived from the sum of line amounts; it is never stored
+    as an independently editable value. A confirmed bill is a frozen historical
+    financial record.
+    """
+
+    agreement_id: uuid.UUID
+    tenant_id: uuid.UUID
+    rental_space_id: uuid.UUID
+    period: BillingPeriod
+    billing_date: date
+    lines: list[BillLine] = field(default_factory=list)
+    status: BillStatus = BillStatus.DRAFT
+    notes: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.period, BillingPeriod):
+            raise ValueError("Bill period must be a BillingPeriod object")
+        if self.billing_date < self.period.start:
+            raise ValueError("Billing date cannot be before the billing period start")
+        if not isinstance(self.status, BillStatus):
+            raise ValueError(f"Invalid bill status: {self.status}")
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    @property
+    def total(self) -> Money:
+        total = Money(Decimal("0"))
+        for line in self.lines:
+            total = total + line.amount
+        return total
+
+    def add_line(self, line: BillLine) -> None:
+        if self.status != BillStatus.DRAFT:
+            raise ValueError("Lines can only be added to a draft bill")
+        line.bill_id = self.id
+        self.lines.append(line)
+        self.updated_at = utcnow()
+
+    def confirm(self) -> None:
+        if self.status != BillStatus.DRAFT:
+            raise ValueError(f"Cannot confirm a bill with status {self.status.value}")
+        if not self.lines:
+            raise ValueError("Cannot confirm a bill without line items")
+        self.status = BillStatus.CONFIRMED
+        self.updated_at = utcnow()
+
+    def void(self) -> None:
+        if self.status == BillStatus.VOID:
+            raise ValueError("Bill is already void")
+        self.status = BillStatus.VOID
+        self.updated_at = utcnow()
