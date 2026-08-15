@@ -8,6 +8,8 @@ from app.domain.entities import (
     MeterReading,
     MeterReplacement,
     Owner,
+    Payment,
+    PaymentAllocation,
     Property,
     RentalSpace,
     Tenant,
@@ -19,11 +21,19 @@ from app.domain.enums import (
     BillCategory,
     BillStatus,
     ElectricityConfigType,
+    PaymentMethod,
+    PaymentStatus,
     SpaceType,
     UtilityType,
     WaterConfigType,
 )
-from app.domain.value_objects import BillingPeriod, MeterReadingValue, Money, PhoneNumber
+from app.domain.value_objects import (
+    BillBalance,
+    BillingPeriod,
+    MeterReadingValue,
+    Money,
+    PhoneNumber,
+)
 
 __all__ = [
     "Owner",
@@ -49,4 +59,9 @@ __all__ = [
     "BillLine",
     "Bill",
     "BillingPeriod",
+    "PaymentStatus",
+    "PaymentMethod",
+    "Payment",
+    "PaymentAllocation",
+    "BillBalance",
 ]

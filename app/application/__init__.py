@@ -7,6 +7,7 @@ from app.application.services import (
     MeterReplacementService,
     MeterService,
     OwnerService,
+    PaymentService,
     PropertyService,
     RentalSpaceService,
     TenantService,
@@ -26,4 +27,5 @@ __all__ = [
     "UtilityTariffService",
     "MeterReplacementService",
     "BillingService",
+    "PaymentService",
 ]

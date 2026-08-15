@@ -7,6 +7,10 @@ from app.infrastructure.repositories.meter_reading_repository import MeterReadin
 from app.infrastructure.repositories.meter_replacement_repository import MeterReplacementRepository
 from app.infrastructure.repositories.meter_repository import MeterRepository
 from app.infrastructure.repositories.owner_repository import OwnerRepository
+from app.infrastructure.repositories.payment_allocation_repository import (
+    PaymentAllocationRepository,
+)
+from app.infrastructure.repositories.payment_repository import PaymentRepository
 from app.infrastructure.repositories.property_repository import PropertyRepository
 from app.infrastructure.repositories.rental_space_repository import RentalSpaceRepository
 from app.infrastructure.repositories.tenant_repository import TenantRepository
@@ -26,4 +30,6 @@ __all__ = [
     "UtilityTariffRepository",
     "MeterReplacementRepository",
     "BillRepository",
+    "PaymentRepository",
+    "PaymentAllocationRepository",
 ]

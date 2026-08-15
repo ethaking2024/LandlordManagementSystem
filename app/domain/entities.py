@@ -10,6 +10,8 @@ from app.domain.enums import (
     BillCategory,
     BillStatus,
     ElectricityConfigType,
+    PaymentMethod,
+    PaymentStatus,
     SpaceType,
     UtilityType,
     WaterConfigType,
@@ -382,3 +384,66 @@ class Bill:
             raise ValueError("Bill is already void")
         self.status = BillStatus.VOID
         self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class Payment:
+    """Money actually received from a tenant.
+
+    The payment record is the primary source of truth for money received; the
+    status governs whether the payment (and its allocations) still count toward
+    bill balances. A payment is never physically deleted.
+    """
+
+    tenant_id: uuid.UUID
+    payment_date: date
+    amount: Money
+    payment_method: PaymentMethod
+    reference: str | None = None
+    notes: str | None = None
+    status: PaymentStatus = PaymentStatus.RECORDED
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+    updated_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.amount, Money):
+            raise ValueError("Payment amount must be a Money object")
+        if self.amount.amount <= 0:
+            raise ValueError("Payment amount must be greater than zero")
+        if not isinstance(self.payment_method, PaymentMethod):
+            raise ValueError(f"Invalid payment method: {self.payment_method}")
+        if not isinstance(self.status, PaymentStatus):
+            raise ValueError(f"Invalid payment status: {self.status}")
+        if self.reference:
+            self.reference = self.reference.strip()
+        if self.notes:
+            self.notes = self.notes.strip()
+
+    def void(self) -> None:
+        if self.status == PaymentStatus.VOID:
+            raise ValueError("Payment is already void")
+        self.status = PaymentStatus.VOID
+        self.updated_at = utcnow()
+
+
+@dataclass(slots=True)
+class PaymentAllocation:
+    """A portion of a payment applied to a particular bill.
+
+    Allocations are immutable records. A valid allocation is one whose payment is
+    still RECORDED; once the payment is voided the allocation no longer counts
+    toward bill balances but the record itself is preserved.
+    """
+
+    payment_id: uuid.UUID
+    bill_id: uuid.UUID
+    allocated_amount: Money
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    created_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.allocated_amount, Money):
+            raise ValueError("Allocated amount must be a Money object")
+        if self.allocated_amount.amount <= 0:
+            raise ValueError("Allocated amount must be greater than zero")

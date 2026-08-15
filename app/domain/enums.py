@@ -43,3 +43,15 @@ class BillCategory(StrEnum):
     RENT = "rent"
     ELECTRICITY = "electricity"
     WATER = "water"
+
+
+class PaymentStatus(StrEnum):
+    RECORDED = "recorded"
+    VOID = "void"
+
+
+class PaymentMethod(StrEnum):
+    CASH = "cash"
+    BANK_TRANSFER = "bank_transfer"
+    ONLINE = "online"
+    OTHER = "other"

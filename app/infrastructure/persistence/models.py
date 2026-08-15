@@ -20,7 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.domain.enums import AgreementStatus, BillStatus
+from app.domain.enums import AgreementStatus, BillStatus, PaymentStatus
 from app.infrastructure.persistence.base import Base
 
 
@@ -106,6 +106,7 @@ class TenantModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     agreements: Mapped[list[AgreementModel]] = relationship("AgreementModel", back_populates="tenant", lazy="selectin")
+    payments: Mapped[list[PaymentModel]] = relationship("PaymentModel", back_populates="tenant", lazy="selectin")
 
     __table_args__ = (
         Index("ix_tenants_full_name", "full_name"),
@@ -312,6 +313,9 @@ class BillModel(Base):
     lines: Mapped[list[BillLineModel]] = relationship(
         "BillLineModel", back_populates="bill", lazy="selectin", cascade="all, delete-orphan"
     )
+    allocations: Mapped[list[PaymentAllocationModel]] = relationship(
+        "PaymentAllocationModel", back_populates="bill", lazy="selectin"
+    )
 
     __table_args__ = (
         Index("ix_bills_agreement_id", "agreement_id"),
@@ -366,3 +370,67 @@ class BillLineModel(Base):
 
     def __repr__(self) -> str:
         return f"<BillLineModel(id={self.id}, bill_id={self.bill_id}, category={self.category!r}, amount={self.amount})>"
+
+
+class PaymentModel(Base):
+    __tablename__ = "payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+    payment_date: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(30), nullable=False)
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=PaymentStatus.RECORDED.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    tenant: Mapped[TenantModel] = relationship("TenantModel", back_populates="payments", lazy="selectin")
+    allocations: Mapped[list[PaymentAllocationModel]] = relationship(
+        "PaymentAllocationModel", back_populates="payment", lazy="selectin"
+    )
+
+    __table_args__ = (
+        Index("ix_payments_tenant_id", "tenant_id"),
+        Index("ix_payments_payment_date", "payment_date"),
+        Index("ix_payments_status", "status"),
+        CheckConstraint("amount > 0", name="ck_payments_amount_positive"),
+        CheckConstraint("payment_method IN ('cash', 'bank_transfer', 'online', 'other')", name="ck_payments_payment_method"),
+        CheckConstraint("status IN ('recorded', 'void')", name="ck_payments_status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PaymentModel(id={self.id}, tenant_id={self.tenant_id}, amount={self.amount}, status={self.status!r})>"
+
+
+class PaymentAllocationModel(Base):
+    __tablename__ = "payment_allocations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False
+    )
+    bill_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("bills.id", ondelete="RESTRICT"), nullable=False
+    )
+    allocated_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    payment: Mapped[PaymentModel] = relationship("PaymentModel", back_populates="allocations", lazy="selectin")
+    bill: Mapped[BillModel] = relationship("BillModel", back_populates="allocations", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_payment_allocations_payment_id", "payment_id"),
+        Index("ix_payment_allocations_bill_id", "bill_id"),
+        UniqueConstraint("payment_id", "bill_id", name="uq_payment_allocations_payment_bill"),
+        CheckConstraint("allocated_amount > 0", name="ck_payment_allocations_amount_positive"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<PaymentAllocationModel(id={self.id}, payment_id={self.payment_id}, "
+            f"bill_id={self.bill_id}, allocated_amount={self.allocated_amount})>"
+        )

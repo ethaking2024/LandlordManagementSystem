@@ -6,6 +6,7 @@ from app.application.services.meter_reading_service import MeterReadingService
 from app.application.services.meter_replacement_service import MeterReplacementService
 from app.application.services.meter_service import MeterService
 from app.application.services.owner_service import OwnerService
+from app.application.services.payment_service import PaymentService
 from app.application.services.property_service import PropertyService
 from app.application.services.rental_space_service import RentalSpaceService
 from app.application.services.tenant_service import TenantService
@@ -24,4 +25,5 @@ __all__ = [
     "UtilityTariffService",
     "MeterReplacementService",
     "BillingService",
+    "PaymentService",
 ]

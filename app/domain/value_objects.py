@@ -80,3 +80,20 @@ class BillingPeriod:
 
     def contains(self, day: date) -> bool:
         return self.start <= day <= self.end
+
+
+@dataclass(frozen=True, slots=True)
+class BillBalance:
+    """A read-only snapshot of a bill's payment state derived from allocations.
+
+    `total` is the bill total. `allocated` is the sum of amounts from valid
+    (non-void) payment allocations. `outstanding` is the difference.
+    """
+
+    total: Money
+    allocated: Money
+    outstanding: Money
+
+    def __post_init__(self) -> None:
+        if self.allocated.amount > self.total.amount:
+            raise ValueError("Allocated amount cannot exceed bill total")
