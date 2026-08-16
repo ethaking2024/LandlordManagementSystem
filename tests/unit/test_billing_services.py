@@ -723,3 +723,34 @@ class TestGetAllBills:
         result = service.get_all_bills()
 
         assert result == []
+
+    def test_get_bills_by_billing_date_range_delegates_to_repository(
+        self,
+        service: BillingService,
+        mock_bill_repo: MagicMock,
+    ) -> None:
+        bill = Bill(
+            agreement_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            rental_space_id=uuid.uuid4(),
+            period=BillingPeriod(date(2026, 1, 1), date(2026, 1, 31)),
+            billing_date=date(2026, 1, 31),
+            status=BillStatus.DRAFT,
+        )
+        mock_bill_repo.get_by_billing_date_range.return_value = [bill]
+
+        result = service.get_bills_by_billing_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        mock_bill_repo.get_by_billing_date_range.assert_called_once_with(
+            date(2026, 1, 1), date(2026, 1, 31), limit=10000, offset=0
+        )
+        assert result == [bill]
+
+    def test_get_bills_by_billing_date_range_empty(
+        self, service: BillingService, mock_bill_repo: MagicMock
+    ) -> None:
+        mock_bill_repo.get_by_billing_date_range.return_value = []
+
+        result = service.get_bills_by_billing_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        assert result == []

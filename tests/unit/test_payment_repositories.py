@@ -78,6 +78,16 @@ class TestPaymentRepository:
         assert result == []
         mock_session.scalars.assert_called_once()
 
+    def test_get_by_date_range(self, repository: PaymentRepository, mock_session: MagicMock) -> None:
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
+        mock_session.scalars.return_value = mock_scalars
+
+        result = repository.get_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        assert result == []
+        mock_session.scalars.assert_called_once()
+
     def test_update(self, repository: PaymentRepository, mock_session: MagicMock) -> None:
         payment = _payment(PaymentStatus.VOID)
         mock_model = MagicMock(spec=PaymentModel)

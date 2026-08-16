@@ -426,6 +426,31 @@ class TestGetAllDeposits:
         assert result == []
 
 
+class TestGetDepositsByDateRange:
+    @pytest.fixture
+    def service(self) -> DepositService:
+        return DepositService(MagicMock(), MagicMock(), MagicMock())
+
+    def test_delegates_to_repository(self, service: DepositService) -> None:
+        agreement = _agreement()
+        deposit = _held_deposit(agreement)
+        service._deposit_repository.get_by_date_range.return_value = [deposit]
+
+        result = service.get_deposits_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        service._deposit_repository.get_by_date_range.assert_called_once_with(
+            date(2026, 1, 1), date(2026, 1, 31), limit=10000, offset=0
+        )
+        assert result == [deposit]
+
+    def test_empty_range(self, service: DepositService) -> None:
+        service._deposit_repository.get_by_date_range.return_value = []
+
+        result = service.get_deposits_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        assert result == []
+
+
 class TestDistinction:
     @pytest.fixture
     def service(self) -> DepositService:

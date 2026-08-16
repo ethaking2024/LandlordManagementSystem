@@ -40,3 +40,7 @@ class BusinessRuleError(LMSError):
 
 class ApplicationError(LMSError):
     """Raised when an application service operation fails."""
+
+
+class ReportError(LMSError):
+    """Raised when a report cannot be generated or exported."""

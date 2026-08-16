@@ -317,6 +317,31 @@ class TestGetAllExpenses:
         service._expense_repository.get_all.assert_called_once_with(limit=50, offset=10)
 
 
+class TestGetExpensesByDateRange:
+    @pytest.fixture
+    def service(self) -> ExpenseService:
+        return ExpenseService(MagicMock(), MagicMock(), MagicMock())
+
+    def test_delegates_to_repository(self, service: ExpenseService) -> None:
+        property_obj = _property()
+        expected = [_recorded_expense(property_obj.id, "3500")]
+        service._expense_repository.get_by_date_range.return_value = expected
+
+        result = service.get_expenses_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        service._expense_repository.get_by_date_range.assert_called_once_with(
+            date(2026, 1, 1), date(2026, 1, 31), limit=10000, offset=0
+        )
+        assert result == expected
+
+    def test_empty_range(self, service: ExpenseService) -> None:
+        service._expense_repository.get_by_date_range.return_value = []
+
+        result = service.get_expenses_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        assert result == []
+
+
 class TestTransactionSafety:
     @pytest.fixture
     def service(self) -> ExpenseService:

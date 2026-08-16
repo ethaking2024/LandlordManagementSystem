@@ -61,6 +61,11 @@ class SimpleTableModel(QAbstractTableModel):
         self._rows = list(rows)
         self.endResetModel()
 
+    def set_headers(self, headers: list[str]) -> None:
+        self.beginResetModel()
+        self._headers = list(headers)
+        self.endResetModel()
+
     def clear(self) -> None:
         self.set_rows([])
 

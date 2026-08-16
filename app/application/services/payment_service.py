@@ -75,6 +75,11 @@ class PaymentService:
     def get_all_payments(self, limit: int = 100, offset: int = 0) -> list[Payment]:
         return self._payment_repository.get_all(limit=limit, offset=offset)
 
+    def get_payments_by_date_range(
+        self, start_date: date, end_date: date, limit: int = 10000, offset: int = 0
+    ) -> list[Payment]:
+        return self._payment_repository.get_by_date_range(start_date, end_date, limit=limit, offset=offset)
+
     def get_allocations_by_payment(self, payment_id: uuid.UUID) -> list[PaymentAllocation]:
         return self._payment_allocation_repository.get_by_payment(payment_id)
 

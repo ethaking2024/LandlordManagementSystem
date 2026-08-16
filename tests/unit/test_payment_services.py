@@ -531,6 +531,31 @@ class TestGetAllPayments:
         assert result == []
 
 
+class TestGetPaymentsByDateRange:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_delegates_to_repository(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        payment = _recorded_payment(tenant.id, "8000")
+        service._payment_repository.get_by_date_range.return_value = [payment]
+
+        result = service.get_payments_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        service._payment_repository.get_by_date_range.assert_called_once_with(
+            date(2026, 1, 1), date(2026, 1, 31), limit=10000, offset=0
+        )
+        assert result == [payment]
+
+    def test_empty_range(self, service: PaymentService) -> None:
+        service._payment_repository.get_by_date_range.return_value = []
+
+        result = service.get_payments_by_date_range(date(2026, 1, 1), date(2026, 1, 31))
+
+        assert result == []
+
+
 class TestGetAllocationsByPayment:
     @pytest.fixture
     def service(self) -> PaymentService:

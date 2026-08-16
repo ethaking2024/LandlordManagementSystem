@@ -76,6 +76,11 @@ class DepositService:
     def get_all_deposits(self, limit: int = 100, offset: int = 0) -> list[Deposit]:
         return self._deposit_repository.get_all(limit=limit, offset=offset)
 
+    def get_deposits_by_date_range(
+        self, start_date: date, end_date: date, limit: int = 10000, offset: int = 0
+    ) -> list[Deposit]:
+        return self._deposit_repository.get_by_date_range(start_date, end_date, limit=limit, offset=offset)
+
     def get_deposit_balance(self, deposit_id: uuid.UUID) -> Money:
         deposit = self.get_deposit(deposit_id)
         if deposit.status != DepositStatus.HELD:

@@ -95,6 +95,11 @@ class ExpenseService:
     def get_expenses_by_rental_space(self, rental_space_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Expense]:
         return self._expense_repository.get_by_rental_space(rental_space_id, limit=limit, offset=offset)
 
+    def get_expenses_by_date_range(
+        self, start_date: date, end_date: date, limit: int = 10000, offset: int = 0
+    ) -> list[Expense]:
+        return self._expense_repository.get_by_date_range(start_date, end_date, limit=limit, offset=offset)
+
     def void_expense(self, expense_id: uuid.UUID) -> Expense:
         expense = self.get_expense(expense_id)
         if expense.status == ExpenseStatus.VOID:

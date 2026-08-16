@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -46,6 +47,17 @@ class DepositRepository(RepositoryBase[Deposit]):
         stmt = (
             select(DepositModel)
             .where(DepositModel.tenant_id == tenant_id)
+            .order_by(DepositModel.received_date)
+            .offset(offset)
+            .limit(limit)
+        )
+        models = self.session.scalars(stmt).all()
+        return [self._to_entity(m) for m in models]
+
+    def get_by_date_range(self, start: date, end: date, limit: int = 10000, offset: int = 0) -> list[Deposit]:
+        stmt = (
+            select(DepositModel)
+            .where(DepositModel.received_date >= start, DepositModel.received_date <= end)
             .order_by(DepositModel.received_date)
             .offset(offset)
             .limit(limit)

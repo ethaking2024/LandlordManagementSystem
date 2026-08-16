@@ -17,6 +17,7 @@ from app.application.services import (
     PaymentService,
     PropertyService,
     RentalSpaceService,
+    ReportService,
     TenantService,
     UtilityConfigService,
     UtilityTariffService,
@@ -144,6 +145,18 @@ class Services:
             self._repos.expense,
             self._repos.property,
             self._repos.rental_space,
+        )
+
+    def report(self) -> ReportService:
+        return ReportService(
+            billing_service=self.billing(),
+            payment_service=self.payment(),
+            expense_service=self.expense(),
+            deposit_service=self.deposit(),
+            property_service=self.property(),
+            rental_space_service=self.rental_space(),
+            tenant_service=self.tenant(),
+            agreement_service=self.agreement(),
         )
 
 

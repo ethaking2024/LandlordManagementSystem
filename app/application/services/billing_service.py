@@ -114,6 +114,13 @@ class BillingService:
     def get_bills_by_status(self, status: BillStatus, limit: int = 100, offset: int = 0) -> list[Bill]:
         return self._bill_repository.get_by_status(status, limit=limit, offset=offset)
 
+    def get_bills_by_billing_date_range(
+        self, start_date: date, end_date: date, limit: int = 10000, offset: int = 0
+    ) -> list[Bill]:
+        return self._bill_repository.get_by_billing_date_range(
+            start_date, end_date, limit=limit, offset=offset
+        )
+
     def confirm_bill(self, bill_id: uuid.UUID) -> Bill:
         bill = self.get_bill(bill_id)
         if bill.status != BillStatus.DRAFT:
