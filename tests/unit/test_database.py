@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import DatabaseError
+from app.core.exceptions import DatabaseError, ValidationError
 from app.infrastructure.database import Database, close_database, init_database
 
 
@@ -54,6 +54,49 @@ def test_database_session_rollback_on_error() -> None:
         with pytest.raises(DatabaseError):
             with db.session():
                 raise ValueError("Test error")
+
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit
+def test_database_session_re_raises_lms_error_unchanged() -> None:
+    with patch("app.infrastructure.database.create_engine") as mock_create_engine:
+        mock_engine = MagicMock()
+        mock_session = MagicMock(spec=Session)
+        mock_session_factory = MagicMock(return_value=mock_session)
+        mock_create_engine.return_value = mock_engine
+
+        db = Database("postgresql+psycopg://user:pass@localhost/db")
+        db._session_factory = mock_session_factory
+
+        error = ValidationError(message="Name is required", code="validation_error")
+        with pytest.raises(ValidationError) as excinfo:
+            with db.session():
+                raise error
+
+        assert excinfo.value is error
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit
+def test_database_session_wraps_constraint_error_as_database_error() -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    with patch("app.infrastructure.database.create_engine") as mock_create_engine:
+        mock_engine = MagicMock()
+        mock_session = MagicMock(spec=Session)
+        mock_session_factory = MagicMock(return_value=mock_session)
+        mock_create_engine.return_value = mock_engine
+
+        db = Database("postgresql+psycopg://user:pass@localhost/db")
+        db._session_factory = mock_session_factory
+
+        constraint_error = IntegrityError("stmt", {}, ValueError("foreign key violation"))
+        with pytest.raises(DatabaseError):
+            with db.session():
+                raise constraint_error
 
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()

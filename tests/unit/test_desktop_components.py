@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLineEdit
 
 from app.desktop.components.buttons import DangerButton, PrimaryButton, SecondaryButton
 from app.desktop.components.dialogs import ConfirmationDialog
 from app.desktop.components.form import FormWidget
 from app.desktop.components.page import Page, PlaceholderPage
-from app.desktop.components.table import DataTableView
+from app.desktop.components.table import DataTableView, SimpleTableModel
 from app.desktop.components.widgets import EmptyState
 
 
@@ -55,6 +56,28 @@ def test_data_table_view(qapp) -> None:
     table = DataTableView()
     assert table.alternatingRowColors()
     assert not table.isSortingEnabled()
+
+
+@pytest.mark.unit
+def test_simple_table_model_headers_and_rows(qapp) -> None:
+    model = SimpleTableModel(["Name", "Address"], [("House A", "Thamel")])
+    assert model.rowCount() == 1
+    assert model.columnCount() == 2
+    assert model.data(model.index(0, 0)) == "House A"
+    assert model.data(model.index(0, 1)) == "Thamel"
+    assert model.headerData(0, Qt.Orientation.Horizontal) == "Name"
+    assert model.data(model.index(5, 5)) is None
+
+
+@pytest.mark.unit
+def test_simple_table_model_set_rows_resets(qapp) -> None:
+    model = SimpleTableModel(["Name"])
+    assert model.rowCount() == 0
+    model.set_rows([("A",), ("B",)])
+    assert model.rowCount() == 2
+    assert model.data(model.index(1, 0)) == "B"
+    model.clear()
+    assert model.rowCount() == 0
 
 
 @pytest.mark.unit

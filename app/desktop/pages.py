@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
+from PySide6.QtWidgets import QWidget
+
 from app.desktop.components.page import PlaceholderPage
 from app.desktop.navigation import NavigationRegistry, NavItem
+from app.desktop.property_page import PropertiesPage
+from app.desktop.services import ServiceRunner
 
 _DESCRIPTIONS: dict[str, str] = {
     "dashboard": "An overview of your properties, tenants and recent activity.",
@@ -16,9 +22,15 @@ _DESCRIPTIONS: dict[str, str] = {
     "settings": "Configure application preferences.",
 }
 
+_REAL_PAGES: set[str] = {"properties"}
 
-def build_navigation() -> NavigationRegistry:
-    """Build the ordered sidebar navigation registry with placeholder pages."""
+
+def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
+    """Build the ordered sidebar navigation registry.
+
+    Pass a ServiceRunner to wire the properties page to the application
+    services. Without one, every entry is rendered as a placeholder page.
+    """
     items: list[NavItem] = []
     for key in (
         "dashboard",
@@ -35,18 +47,36 @@ def build_navigation() -> NavigationRegistry:
         label = key.capitalize()
         description = _DESCRIPTIONS[key]
 
-        def make_page(
-            page_label: str = label,
-            page_description: str = description,
-        ) -> PlaceholderPage:
-            return PlaceholderPage(title=page_label, subtitle=page_description)
+        factory: Callable[[], QWidget]
+        if runner is not None and key in _REAL_PAGES:
+
+            def make_real_page(
+                page_label: str = label,
+                page_description: str = description,
+            ) -> PropertiesPage:
+                return PropertiesPage(
+                    runner=runner,
+                    title=page_label,
+                    subtitle=page_description,
+                )
+
+            factory = make_real_page
+        else:
+
+            def make_page(
+                page_label: str = label,
+                page_description: str = description,
+            ) -> PlaceholderPage:
+                return PlaceholderPage(title=page_label, subtitle=page_description)
+
+            factory = make_page
 
         items.append(
             NavItem(
                 key=key,
                 label=label,
                 subtitle=description,
-                page_factory=make_page,
+                page_factory=factory,
             )
         )
     return NavigationRegistry(items)

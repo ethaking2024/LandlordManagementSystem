@@ -4,6 +4,8 @@ import pytest
 
 from app.desktop.main_window import MainWindow
 from app.desktop.pages import build_navigation
+from app.desktop.property_page import PropertiesPage
+from app.desktop.services import ServiceRunner
 
 
 @pytest.fixture
@@ -86,3 +88,25 @@ def test_placeholder_pages_have_coming_soon(main_window: MainWindow) -> None:
     main_window.navigate("payments")
     page = main_window._pages["payments"]
     assert page.title == "Payments"
+
+
+@pytest.mark.unit
+def test_navigation_with_runner_creates_real_properties_page(qapp) -> None:
+    from unittest.mock import MagicMock
+
+    database_session = MagicMock()
+    runner = ServiceRunner(database_session)
+    nav = build_navigation(runner)
+    properties_page = nav.get("properties").page_factory()
+    assert isinstance(properties_page, PropertiesPage)
+
+    payments_page = nav.get("payments").page_factory()
+    assert not isinstance(payments_page, PropertiesPage)
+
+
+@pytest.mark.unit
+def test_main_window_uses_runner(qapp) -> None:
+    window = MainWindow()
+    assert window.runner is not None
+    window.navigate("properties")
+    assert isinstance(window._pages["properties"], PropertiesPage)

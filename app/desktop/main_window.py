@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from app.desktop.navigation import NavigationRegistry
 from app.desktop.pages import build_navigation
-from app.desktop.services import DatabaseSession
+from app.desktop.services import DatabaseSession, ServiceRunner
 
 
 class MainWindow(QMainWindow):
@@ -29,7 +29,8 @@ class MainWindow(QMainWindow):
         database_session: DatabaseSession | None = None,
     ) -> None:
         super().__init__()
-        self._navigation = navigation if navigation is not None else build_navigation()
+        self._runner = ServiceRunner(database_session)
+        self._navigation = navigation if navigation is not None else build_navigation(self._runner)
         self._database_session = database_session
         self._pages: dict[str, QWidget] = {}
         self._current_key: str | None = None
@@ -132,6 +133,10 @@ class MainWindow(QMainWindow):
     @property
     def database_session(self) -> DatabaseSession | None:
         return self._database_session
+
+    @property
+    def runner(self) -> ServiceRunner:
+        return self._runner
 
     def navigate(self, key: str) -> None:
         """Switch to the page registered under ``key``."""

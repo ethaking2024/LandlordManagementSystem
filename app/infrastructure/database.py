@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
-from app.core.exceptions import DatabaseError
+from app.core.exceptions import DatabaseError, LMSError
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -45,6 +45,13 @@ class Database:
         try:
             yield session
             session.commit()
+        except LMSError as e:
+            session.rollback()
+            logger.warning(
+                "Database session rolled back (application error)",
+                extra={"extra_fields": {"code": e.code, "message": e.message}},
+            )
+            raise
         except Exception as e:
             session.rollback()
             logger.exception("Database session error", extra={"extra_fields": {"error": str(e)}})

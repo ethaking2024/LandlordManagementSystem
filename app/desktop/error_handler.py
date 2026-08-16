@@ -27,8 +27,19 @@ _MESSAGE_TITLES: dict[type[LMSError], str] = {
 def user_message(error: BaseException) -> str:
     """Translate an exception into a user-friendly message string."""
     if isinstance(error, LMSError):
+        if isinstance(error, DatabaseError) and _is_constraint_violation(error):
+            return "This action could not be completed because related records exist."
         return error.message
     return "An unexpected error occurred. Please try again."
+
+
+def _is_constraint_violation(error: DatabaseError) -> bool:
+    """Detect a foreign-key/unique constraint failure caused by related records."""
+    cause = error.__cause__
+    if cause is None:
+        return False
+    name = type(cause).__name__
+    return name == "IntegrityError" or "IntegrityError" in name
 
 
 def user_title(error: BaseException) -> str:

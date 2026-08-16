@@ -80,6 +80,25 @@ def test_handle_exception_suppress_logging() -> None:
 
 
 @pytest.mark.unit
+def test_database_error_from_integrity_error_gets_friendly_message() -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    cause = IntegrityError("stmt", {}, ValueError("foreign key violation"))
+    error = DatabaseError("Database operation failed: foreign key violation")
+    error.__cause__ = cause
+    assert (
+        error_handler.user_message(error)
+        == "This action could not be completed because related records exist."
+    )
+
+
+@pytest.mark.unit
+def test_plain_database_error_keeps_its_message() -> None:
+    error = DatabaseError("Database operation failed: connection lost")
+    assert error_handler.user_message(error) == "Database operation failed: connection lost"
+
+
+@pytest.mark.unit
 def test_global_exception_handler_installs(qapp) -> None:
     import sys
 

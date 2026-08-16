@@ -21,6 +21,8 @@ from app.application.services import (
     UtilityConfigService,
     UtilityTariffService,
 )
+from app.core.exceptions import LMSError
+from app.desktop.error_handler import handle_exception
 from app.infrastructure.database import Database
 from app.infrastructure.repositories import (
     AgreementRepository,
@@ -172,3 +174,42 @@ def create_database_session(database: Database | None = None) -> DatabaseSession
     from app.infrastructure.database import get_database
 
     return DatabaseSession(get_database())
+
+
+class OperationFailed:
+    """Sentinel returned by ServiceRunner when an operation raises an exception."""
+
+
+OPERATION_FAILED = OperationFailed()
+
+
+class ServiceRunner:
+    """Executes service operations within a short-lived session.
+
+    The runner opens a session via the shared Database session model, runs the
+    given callable with a session-scoped Services object, and translates any
+    exception into a user-friendly dialog using the desktop error handler.
+    On failure it returns OPERATION_FAILED so callers can react.
+    """
+
+    def __init__(self, database_session: DatabaseSession | None = None) -> None:
+        self._database_session = database_session or create_database_session()
+
+    @property
+    def database_session(self) -> DatabaseSession:
+        return self._database_session
+
+    def run(self, operation, parent=None):
+        """Run ``operation(services)`` inside one short-lived session.
+
+        Returns the operation result, or OPERATION_FAILED when an exception was
+        raised (the error dialog has already been presented to the user).
+        """
+        try:
+            with self._database_session.services() as services:
+                return operation(services)
+        except LMSError as exc:
+            handle_exception(exc, parent)
+        except Exception as exc:  # noqa: BLE001 - translate all UI-facing errors
+            handle_exception(exc, parent)
+        return OPERATION_FAILED
