@@ -651,3 +651,75 @@ class TestTransactionAndMoney:
 
         assert result.lines[0].amount.amount == Decimal("10967.74")
         assert result.lines[0].amount.amount == result.lines[0].amount.amount.quantize(Decimal("0.01"))
+
+
+class TestGetAllBills:
+    @pytest.fixture
+    def mock_bill_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_agreement_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_config_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_meter_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_reading_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_tariff_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def service(
+        self,
+        mock_bill_repo: MagicMock,
+        mock_agreement_repo: MagicMock,
+        mock_config_repo: MagicMock,
+        mock_meter_repo: MagicMock,
+        mock_reading_repo: MagicMock,
+        mock_tariff_repo: MagicMock,
+    ) -> BillingService:
+        return BillingService(
+            mock_bill_repo,
+            mock_agreement_repo,
+            mock_config_repo,
+            mock_meter_repo,
+            mock_reading_repo,
+            mock_tariff_repo,
+        )
+
+    def test_get_all_bills_delegates_to_repository(
+        self,
+        service: BillingService,
+        mock_bill_repo: MagicMock,
+    ) -> None:
+        bill = Bill(
+            agreement_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            rental_space_id=uuid.uuid4(),
+            period=BillingPeriod(date(2026, 1, 1), date(2026, 1, 31)),
+            billing_date=date(2026, 1, 31),
+            status=BillStatus.DRAFT,
+        )
+        mock_bill_repo.get_all.return_value = [bill]
+
+        result = service.get_all_bills()
+
+        mock_bill_repo.get_all.assert_called_once_with(limit=100, offset=0)
+        assert result == [bill]
+
+    def test_get_all_bills_empty(self, service: BillingService, mock_bill_repo: MagicMock) -> None:
+        mock_bill_repo.get_all.return_value = []
+
+        result = service.get_all_bills()
+
+        assert result == []

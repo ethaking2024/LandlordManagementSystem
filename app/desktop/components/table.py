@@ -51,6 +51,8 @@ class SimpleTableModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal:
+            if section < 0 or section >= len(self._headers):
+                return None
             return self._headers[section]
         return section + 1
 

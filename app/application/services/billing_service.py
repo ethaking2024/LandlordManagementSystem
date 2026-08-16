@@ -105,6 +105,9 @@ class BillingService:
             raise NotFoundError(f"Bill with id {bill_id} not found")
         return bill
 
+    def get_all_bills(self, limit: int = 100, offset: int = 0) -> list[Bill]:
+        return self._bill_repository.get_all(limit=limit, offset=offset)
+
     def get_bills_by_agreement(self, agreement_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Bill]:
         return self._bill_repository.get_by_agreement(agreement_id, limit=limit, offset=offset)
 

@@ -330,6 +330,7 @@ class PropertiesPage(Page):
             "This rental space is vacant. Add a tenant and create an agreement to rent it out."
         )
         self._add_panel_button(PrimaryButton("Add Tenant & Agreement"), self._on_add_tenant_agreement)
+        self._add_panel_button(SecondaryButton("Utilities"), self._on_utilities)
         self._space_panel.setVisible(True)
 
     def _show_occupied_panel(self, space: Any) -> None:
@@ -362,6 +363,7 @@ class PropertiesPage(Page):
             SecondaryButton("End Agreement"),
             lambda: self._on_end_agreement(space, agreement),
         )
+        self._add_panel_button(SecondaryButton("Utilities"), self._on_utilities)
         self._space_panel.setVisible(True)
 
     def _add_panel_button(self, button, slot) -> None:
@@ -407,6 +409,19 @@ class PropertiesPage(Page):
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh_spaces()
+
+    def _on_utilities(self) -> None:
+        if self._current_space is None:
+            return
+        from app.desktop.utilities_page import UtilitiesDialog
+
+        dialog = UtilitiesDialog(
+            self._runner,
+            self._current_space.id,
+            self._current_space.name or "Selected rental space",
+            parent=self,
+        )
+        dialog.exec()
 
     def _on_end_agreement(self, space: Any, agreement: Any) -> None:
         dialog = EndAgreementDialog(
