@@ -6,7 +6,9 @@ from PySide6.QtWidgets import QApplication
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
+from app.desktop.error_handler import install_global_exception_handler
 from app.desktop.main_window import MainWindow
+from app.desktop.theme import apply_theme
 
 
 def main() -> int:
@@ -19,9 +21,12 @@ def main() -> int:
         extra={"extra_fields": {"app_name": settings.app_name, "environment": settings.app_env}},
     )
 
+    install_global_exception_handler()
+
     app = QApplication(sys.argv)
     app.setApplicationName(settings.app_name)
     app.setOrganizationName("LMS")
+    apply_theme(app)
 
     window = MainWindow()
     window.show()

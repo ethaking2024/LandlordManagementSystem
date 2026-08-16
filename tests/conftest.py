@@ -23,3 +23,14 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line("markers", "integration: mark test as an integration test")
     config.addinivalue_line("markers", "database: mark test as requiring database")
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """A process-wide QApplication for widget tests."""
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app

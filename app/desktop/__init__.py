@@ -1,1 +1,1 @@
-# Desktop Package
+# Desktop application package
