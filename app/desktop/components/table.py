@@ -14,15 +14,18 @@ from PySide6.QtWidgets import (
 class SimpleTableModel(QAbstractTableModel):
     """A minimal read-only table model backed by a list of row tuples."""
 
+    _headers: list[str] = []
+    _rows: list[tuple[str, ...]] = []
+
     def __init__(
         self,
         headers: list[str],
         rows: list[tuple[str, ...]] | None = None,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
         self._headers = list(headers)
         self._rows: list[tuple[str, ...]] = list(rows or [])
+        super().__init__(parent)
 
     def rowCount(self, parent: QModelIndex | QPersistentModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self._rows)

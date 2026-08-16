@@ -4,10 +4,12 @@ from collections.abc import Callable
 
 from PySide6.QtWidgets import QWidget
 
+from app.desktop.agreement_page import AgreementsPage
 from app.desktop.components.page import PlaceholderPage
 from app.desktop.navigation import NavigationRegistry, NavItem
 from app.desktop.property_page import PropertiesPage
 from app.desktop.services import ServiceRunner
+from app.desktop.tenant_page import TenantsPage
 
 _DESCRIPTIONS: dict[str, str] = {
     "dashboard": "An overview of your properties, tenants and recent activity.",
@@ -22,14 +24,14 @@ _DESCRIPTIONS: dict[str, str] = {
     "settings": "Configure application preferences.",
 }
 
-_REAL_PAGES: set[str] = {"properties"}
+_REAL_PAGES: set[str] = {"properties", "tenants", "agreements"}
 
 
 def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
     """Build the ordered sidebar navigation registry.
 
-    Pass a ServiceRunner to wire the properties page to the application
-    services. Without one, every entry is rendered as a placeholder page.
+    Pass a ServiceRunner to wire the properties, tenants and agreements pages to
+    the application services. Without one, every entry is a placeholder page.
     """
     items: list[NavItem] = []
     for key in (
@@ -49,27 +51,9 @@ def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
 
         factory: Callable[[], QWidget]
         if runner is not None and key in _REAL_PAGES:
-
-            def make_real_page(
-                page_label: str = label,
-                page_description: str = description,
-            ) -> PropertiesPage:
-                return PropertiesPage(
-                    runner=runner,
-                    title=page_label,
-                    subtitle=page_description,
-                )
-
-            factory = make_real_page
+            factory = _make_real_page_factory(key, runner, label, description)
         else:
-
-            def make_page(
-                page_label: str = label,
-                page_description: str = description,
-            ) -> PlaceholderPage:
-                return PlaceholderPage(title=page_label, subtitle=page_description)
-
-            factory = make_page
+            factory = _make_placeholder_factory(label, description)
 
         items.append(
             NavItem(
@@ -80,3 +64,28 @@ def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
             )
         )
     return NavigationRegistry(items)
+
+
+def _make_real_page_factory(
+    key: str,
+    runner: ServiceRunner,
+    label: str,
+    description: str,
+) -> Callable[[], QWidget]:
+    def factory() -> QWidget:
+        if key == "properties":
+            return PropertiesPage(runner=runner, title=label, subtitle=description)
+        if key == "tenants":
+            return TenantsPage(runner=runner, title=label, subtitle=description)
+        if key == "agreements":
+            return AgreementsPage(runner=runner, title=label, subtitle=description)
+        raise ValueError(f"Unhandled real page key: {key}")
+
+    return factory
+
+
+def _make_placeholder_factory(label: str, description: str) -> Callable[[], QWidget]:
+    def factory() -> PlaceholderPage:
+        return PlaceholderPage(title=label, subtitle=description)
+
+    return factory

@@ -79,6 +79,9 @@ class AgreementService:
             raise NotFoundError(f"Agreement with id {agreement_id} not found")
         return agreement
 
+    def get_all_agreements(self, limit: int = 100, offset: int = 0) -> list[Agreement]:
+        return self._repository.get_all(limit=limit, offset=offset)
+
     def get_agreements_by_tenant(self, tenant_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Agreement]:
         return self._repository.get_by_tenant(tenant_id, limit=limit, offset=offset)
 
