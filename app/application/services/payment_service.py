@@ -72,6 +72,12 @@ class PaymentService:
     def get_payments_by_tenant(self, tenant_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Payment]:
         return self._payment_repository.get_by_tenant(tenant_id, limit=limit, offset=offset)
 
+    def get_all_payments(self, limit: int = 100, offset: int = 0) -> list[Payment]:
+        return self._payment_repository.get_all(limit=limit, offset=offset)
+
+    def get_allocations_by_payment(self, payment_id: uuid.UUID) -> list[PaymentAllocation]:
+        return self._payment_allocation_repository.get_by_payment(payment_id)
+
     def void_payment(self, payment_id: uuid.UUID) -> Payment:
         payment = self.get_payment(payment_id)
         if payment.status == PaymentStatus.VOID:
@@ -199,6 +205,19 @@ class PaymentService:
         payment = self.get_payment(payment_id)
         used = self._allocated_total_for_payment(payment.id)
         return Money(payment.amount.amount - used)
+
+    def calculate_payment_allocated(self, payment_id: uuid.UUID) -> Money:
+        """Return the total amount allocated from a payment to its bills."""
+        return Money(self._allocated_total_for_payment(payment_id))
+
+    def get_allocatable_bills(self, tenant_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Bill]:
+        """Return confirmed bills for a tenant that still have an outstanding amount."""
+        bills = self._bill_repository.get_by_tenant(tenant_id, limit=limit, offset=offset)
+        return [
+            bill
+            for bill in bills
+            if bill.status == BillStatus.CONFIRMED and self.calculate_bill_balance(bill.id).outstanding.amount > 0
+        ]
 
     # ------------------------------------------------------------------
     # Helpers

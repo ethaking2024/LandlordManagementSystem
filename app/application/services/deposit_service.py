@@ -73,6 +73,9 @@ class DepositService:
     def get_deposits_by_agreement(self, agreement_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Deposit]:
         return self._deposit_repository.get_by_agreement(agreement_id, limit=limit, offset=offset)
 
+    def get_all_deposits(self, limit: int = 100, offset: int = 0) -> list[Deposit]:
+        return self._deposit_repository.get_all(limit=limit, offset=offset)
+
     def get_deposit_balance(self, deposit_id: uuid.UUID) -> Money:
         deposit = self.get_deposit(deposit_id)
         if deposit.status != DepositStatus.HELD:

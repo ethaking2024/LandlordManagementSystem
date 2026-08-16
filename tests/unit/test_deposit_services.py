@@ -403,6 +403,29 @@ class TestCompleteSettlement:
         service._deposit_repository.update.assert_not_called()
 
 
+class TestGetAllDeposits:
+    @pytest.fixture
+    def service(self) -> DepositService:
+        return DepositService(MagicMock(), MagicMock(), MagicMock())
+
+    def test_get_all_deposits_delegates_to_repository(self, service: DepositService) -> None:
+        agreement = _agreement()
+        deposit = _held_deposit(agreement)
+        service._deposit_repository.get_all.return_value = [deposit]
+
+        result = service.get_all_deposits()
+
+        service._deposit_repository.get_all.assert_called_once_with(limit=100, offset=0)
+        assert result == [deposit]
+
+    def test_get_all_deposits_empty(self, service: DepositService) -> None:
+        service._deposit_repository.get_all.return_value = []
+
+        result = service.get_all_deposits()
+
+        assert result == []
+
+
 class TestDistinction:
     @pytest.fixture
     def service(self) -> DepositService:

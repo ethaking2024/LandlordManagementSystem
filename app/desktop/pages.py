@@ -7,7 +7,9 @@ from PySide6.QtWidgets import QWidget
 from app.desktop.agreement_page import AgreementsPage
 from app.desktop.billing_page import BillingPage
 from app.desktop.components.page import PlaceholderPage
+from app.desktop.deposit_page import DepositsPage
 from app.desktop.navigation import NavigationRegistry, NavItem
+from app.desktop.payment_page import PaymentsPage
 from app.desktop.property_page import PropertiesPage
 from app.desktop.services import ServiceRunner
 from app.desktop.tenant_page import TenantsPage
@@ -25,7 +27,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "settings": "Configure application preferences.",
 }
 
-_REAL_PAGES: set[str] = {"properties", "tenants", "agreements", "billing"}
+_REAL_PAGES: set[str] = {"properties", "tenants", "agreements", "billing", "payments", "deposits"}
 
 
 def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
@@ -82,6 +84,10 @@ def _make_real_page_factory(
             return AgreementsPage(runner=runner, title=label, subtitle=description)
         if key == "billing":
             return BillingPage(runner=runner, title=label, subtitle=description)
+        if key == "payments":
+            return PaymentsPage(runner=runner, title=label, subtitle=description)
+        if key == "deposits":
+            return DepositsPage(runner=runner, title=label, subtitle=description)
         raise ValueError(f"Unhandled real page key: {key}")
 
     return factory

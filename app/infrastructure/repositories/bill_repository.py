@@ -43,6 +43,17 @@ class BillRepository(RepositoryBase[Bill]):
         models = self.session.scalars(stmt).all()
         return [self._to_entity(m) for m in models]
 
+    def get_by_tenant(self, tenant_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Bill]:
+        stmt = (
+            select(BillModel)
+            .where(BillModel.tenant_id == tenant_id)
+            .order_by(BillModel.period_start)
+            .offset(offset)
+            .limit(limit)
+        )
+        models = self.session.scalars(stmt).all()
+        return [self._to_entity(m) for m in models]
+
     def get_by_agreement_and_period(
         self, agreement_id: uuid.UUID, period_start: date, period_end: date
     ) -> Bill | None:

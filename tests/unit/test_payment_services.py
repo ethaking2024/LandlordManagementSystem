@@ -506,3 +506,105 @@ class TestTransactionSafety:
 
         # Insufficient credit is detected before any allocation is committed.
         service._payment_allocation_repository.add.assert_not_called()
+
+
+class TestGetAllPayments:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_get_all_payments_delegates_to_repository(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        payment = _recorded_payment(tenant.id, "8000")
+        service._payment_repository.get_all.return_value = [payment]
+
+        result = service.get_all_payments()
+
+        service._payment_repository.get_all.assert_called_once_with(limit=100, offset=0)
+        assert result == [payment]
+
+    def test_get_all_payments_empty(self, service: PaymentService) -> None:
+        service._payment_repository.get_all.return_value = []
+
+        result = service.get_all_payments()
+
+        assert result == []
+
+
+class TestGetAllocationsByPayment:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_get_allocations_by_payment_delegates_to_repository(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        bill = _confirmed_bill(tenant.id, "20000")
+        payment = _recorded_payment(tenant.id, "8000")
+        allocation = PaymentAllocation(
+            payment_id=payment.id,
+            bill_id=bill.id,
+            allocated_amount=Money(Decimal("8000")),
+        )
+        service._payment_allocation_repository.get_by_payment.return_value = [allocation]
+
+        result = service.get_allocations_by_payment(payment.id)
+
+        service._payment_allocation_repository.get_by_payment.assert_called_once_with(payment.id)
+        assert result == [allocation]
+
+    def test_calculate_payment_allocated(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        payment = _recorded_payment(tenant.id, "25000")
+        service._payment_repository.get.return_value = payment
+        service._payment_allocation_repository.get_by_payment.return_value = [
+            PaymentAllocation(
+                payment_id=payment.id,
+                bill_id=uuid.uuid4(),
+                allocated_amount=Money(Decimal("20000")),
+            )
+        ]
+
+        allocated = service.calculate_payment_allocated(payment.id)
+
+        assert allocated.amount == Decimal("20000.00")
+
+
+class TestGetAllocatableBills:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_only_confirmed_bills_with_outstanding_returned(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        confirmed_with_balance = _confirmed_bill(tenant.id, "20000")
+        confirmed_paid = _confirmed_bill(tenant.id, "20000")
+        draft = _confirmed_bill(tenant.id, "20000")
+        draft.status = BillStatus.DRAFT
+
+        bills = [confirmed_with_balance, confirmed_paid, draft]
+        service._bill_repository.get_by_tenant.return_value = bills
+        service._bill_repository.get.side_effect = lambda bill_id: next(b for b in bills if b.id == bill_id)
+
+        paid_allocation = PaymentAllocation(
+            payment_id=uuid.uuid4(),
+            bill_id=confirmed_paid.id,
+            allocated_amount=Money(Decimal("20000")),
+        )
+
+        def _valid_by_bill(bill_id):
+            return [paid_allocation] if bill_id == confirmed_paid.id else []
+
+        service._payment_allocation_repository.get_valid_by_bill.side_effect = _valid_by_bill
+        service._payment_allocation_repository.get_by_payment.return_value = []
+
+        result = service.get_allocatable_bills(tenant.id)
+
+        assert result == [confirmed_with_balance]
+
+    def test_get_allocatable_bills_empty(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        service._bill_repository.get_by_tenant.return_value = []
+
+        result = service.get_allocatable_bills(tenant.id)
+
+        assert result == []

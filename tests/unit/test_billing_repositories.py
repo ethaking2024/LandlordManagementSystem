@@ -66,6 +66,16 @@ class TestBillRepository:
         assert result == []
         mock_session.scalars.assert_called_once()
 
+    def test_get_by_tenant(self, repository: BillRepository, mock_session: MagicMock) -> None:
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
+        mock_session.scalars.return_value = mock_scalars
+
+        result = repository.get_by_tenant(uuid.uuid4())
+
+        assert result == []
+        mock_session.scalars.assert_called_once()
+
     def test_get_by_agreement_and_period(self, repository: BillRepository, mock_session: MagicMock) -> None:
         mock_session.scalar.return_value = None
         result = repository.get_by_agreement_and_period(uuid.uuid4(), date(2026, 1, 1), date(2026, 1, 31))
