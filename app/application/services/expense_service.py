@@ -86,6 +86,9 @@ class ExpenseService:
             raise NotFoundError(f"Expense with id {expense_id} not found")
         return expense
 
+    def get_all_expenses(self, limit: int = 100, offset: int = 0) -> list[Expense]:
+        return self._expense_repository.get_all(limit=limit, offset=offset)
+
     def get_expenses_by_property(self, property_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Expense]:
         return self._expense_repository.get_by_property(property_id, limit=limit, offset=offset)
 

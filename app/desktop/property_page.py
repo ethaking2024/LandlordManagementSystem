@@ -147,10 +147,13 @@ class PropertiesPage(Page):
         self._delete_space_button = SecondaryButton("Delete")
         self._delete_space_button.setObjectName("dangerButton")
         self._delete_space_button.clicked.connect(self._on_delete_space)
+        self._property_expenses_button = SecondaryButton("Expenses")
+        self._property_expenses_button.clicked.connect(self._on_property_expenses)
         for button in (
             self._add_space_button,
             self._edit_space_button,
             self._delete_space_button,
+            self._property_expenses_button,
         ):
             toolbar.addWidget(button)
         toolbar.addStretch()
@@ -331,6 +334,7 @@ class PropertiesPage(Page):
         )
         self._add_panel_button(PrimaryButton("Add Tenant & Agreement"), self._on_add_tenant_agreement)
         self._add_panel_button(SecondaryButton("Utilities"), self._on_utilities)
+        self._add_panel_button(SecondaryButton("Expenses"), self._on_space_expenses)
         self._space_panel.setVisible(True)
 
     def _show_occupied_panel(self, space: Any) -> None:
@@ -364,6 +368,7 @@ class PropertiesPage(Page):
             lambda: self._on_end_agreement(space, agreement),
         )
         self._add_panel_button(SecondaryButton("Utilities"), self._on_utilities)
+        self._add_panel_button(SecondaryButton("Expenses"), self._on_space_expenses)
         self._space_panel.setVisible(True)
 
     def _add_panel_button(self, button, slot) -> None:
@@ -422,6 +427,20 @@ class PropertiesPage(Page):
             parent=self,
         )
         dialog.exec()
+
+    def _on_space_expenses(self) -> None:
+        if self._current_space is None:
+            return
+        from app.desktop.expense_forms import ExpenseDialog
+
+        dialog = ExpenseDialog(
+            self._runner,
+            property_id=self._current_space.property_id,
+            rental_space_id=self._current_space.id,
+            parent=self,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh_spaces()
 
     def _on_end_agreement(self, space: Any, agreement: Any) -> None:
         dialog = EndAgreementDialog(
@@ -532,6 +551,19 @@ class PropertiesPage(Page):
         if self._current_property is None:
             return
         dialog = RentalSpaceFormDialog(
+            self._runner,
+            property_id=self._current_property.id,
+            parent=self,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh_spaces()
+
+    def _on_property_expenses(self) -> None:
+        if self._current_property is None:
+            return
+        from app.desktop.expense_forms import ExpenseDialog
+
+        dialog = ExpenseDialog(
             self._runner,
             property_id=self._current_property.id,
             parent=self,

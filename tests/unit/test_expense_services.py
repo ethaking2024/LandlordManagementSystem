@@ -301,6 +301,22 @@ class TestMoney:
         assert total.amount == Decimal("13500.01")
 
 
+class TestGetAllExpenses:
+    @pytest.fixture
+    def service(self) -> ExpenseService:
+        return ExpenseService(MagicMock(), MagicMock(), MagicMock())
+
+    def test_get_all_expenses_delegates_to_repository(self, service: ExpenseService) -> None:
+        property_obj = _property()
+        expected = [_recorded_expense(property_obj.id, "3500")]
+        service._expense_repository.get_all.return_value = expected
+
+        result = service.get_all_expenses(limit=50, offset=10)
+
+        assert result == expected
+        service._expense_repository.get_all.assert_called_once_with(limit=50, offset=10)
+
+
 class TestTransactionSafety:
     @pytest.fixture
     def service(self) -> ExpenseService:

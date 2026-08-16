@@ -8,6 +8,7 @@ from app.desktop.agreement_page import AgreementsPage
 from app.desktop.billing_page import BillingPage
 from app.desktop.components.page import PlaceholderPage
 from app.desktop.deposit_page import DepositsPage
+from app.desktop.expense_page import ExpensesPage
 from app.desktop.navigation import NavigationRegistry, NavItem
 from app.desktop.payment_page import PaymentsPage
 from app.desktop.property_page import PropertiesPage
@@ -27,7 +28,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "settings": "Configure application preferences.",
 }
 
-_REAL_PAGES: set[str] = {"properties", "tenants", "agreements", "billing", "payments", "deposits"}
+_REAL_PAGES: set[str] = {"properties", "tenants", "agreements", "billing", "payments", "deposits", "expenses"}
 
 
 def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
@@ -88,6 +89,8 @@ def _make_real_page_factory(
             return PaymentsPage(runner=runner, title=label, subtitle=description)
         if key == "deposits":
             return DepositsPage(runner=runner, title=label, subtitle=description)
+        if key == "expenses":
+            return ExpensesPage(runner=runner, title=label, subtitle=description)
         raise ValueError(f"Unhandled real page key: {key}")
 
     return factory
