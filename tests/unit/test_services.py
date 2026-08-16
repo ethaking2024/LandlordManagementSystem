@@ -148,6 +148,17 @@ class TestRentalSpaceService:
         with pytest.raises(ValidationError, match="Rental space name is required"):
             service.create_rental_space(uuid.uuid4(), "", SpaceType.ROOM)
 
+    def test_get_all_rental_spaces_delegates_to_repository(
+        self, service: RentalSpaceService, mock_space_repo: MagicMock
+    ) -> None:
+        mock_space = RentalSpace(property_id=uuid.uuid4(), name="First Floor", space_type=SpaceType.FLAT)
+        mock_space_repo.get_all.return_value = [mock_space]
+
+        result = service.get_all_rental_spaces()
+
+        assert result == [mock_space]
+        mock_space_repo.get_all.assert_called_once_with(limit=100, offset=0)
+
 
 class TestTenantService:
     @pytest.fixture
@@ -379,3 +390,22 @@ class TestAgreementService:
 
         assert result is True
         mock_agreement_repo.get_active_by_rental_space.assert_called_once_with(rental_space_id)
+
+    def test_get_active_agreements_delegates_to_repository(
+        self,
+        service: AgreementService,
+        mock_agreement_repo: MagicMock,
+    ) -> None:
+        mock_agreement = Agreement(
+            tenant_id=uuid.uuid4(),
+            rental_space_id=uuid.uuid4(),
+            start_date=date(2024, 1, 1),
+            monthly_rent=Money(Decimal("15000.00")),
+            status=AgreementStatus.ACTIVE,
+        )
+        mock_agreement_repo.get_active.return_value = [mock_agreement]
+
+        result = service.get_active_agreements()
+
+        assert result == [mock_agreement]
+        mock_agreement_repo.get_active.assert_called_once_with(limit=100, offset=0)

@@ -50,6 +50,16 @@ class AgreementRepository(RepositoryBase[Agreement]):
         models = self.session.scalars(stmt).all()
         return [self._to_entity(m) for m in models]
 
+    def get_active(self, limit: int = 100, offset: int = 0) -> list[Agreement]:
+        stmt = (
+            select(AgreementModel)
+            .where(AgreementModel.status == AgreementStatus.ACTIVE.value)
+            .offset(offset)
+            .limit(limit)
+        )
+        models = self.session.scalars(stmt).all()
+        return [self._to_entity(m) for m in models]
+
     def has_overlapping_active_agreement(
         self,
         rental_space_id: uuid.UUID,

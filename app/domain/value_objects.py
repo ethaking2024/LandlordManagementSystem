@@ -97,3 +97,18 @@ class BillBalance:
     def __post_init__(self) -> None:
         if self.allocated.amount > self.total.amount:
             raise ValueError("Allocated amount cannot exceed bill total")
+
+
+@dataclass(frozen=True, slots=True)
+class MonthlySummary:
+    """A read-only summary of billing for a calendar month.
+
+    `billed` is the total of confirmed bills whose billing date falls within the
+    month. `paid` is the allocated portion of those bills. `outstanding` is the
+    remaining unpaid portion. All values are derived by the service layer; the
+    dashboard only formats them.
+    """
+
+    billed: Money
+    paid: Money
+    outstanding: Money

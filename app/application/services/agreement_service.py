@@ -91,6 +91,9 @@ class AgreementService:
     def get_active_agreements_by_rental_space(self, rental_space_id: uuid.UUID) -> list[Agreement]:
         return self._repository.get_active_by_rental_space(rental_space_id)
 
+    def get_active_agreements(self, limit: int = 100, offset: int = 0) -> list[Agreement]:
+        return self._repository.get_active(limit=limit, offset=offset)
+
     def end_agreement(self, agreement_id: uuid.UUID, end_date: date) -> Agreement:
         agreement = self.get_agreement(agreement_id)
         if agreement.status != AgreementStatus.ACTIVE:

@@ -236,6 +236,16 @@ class TestAgreementRepository:
         assert result == []
         mock_session.scalars.assert_called_once()
 
+    def test_get_active(self, repository: AgreementRepository, mock_session: MagicMock) -> None:
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
+        mock_session.scalars.return_value = mock_scalars
+
+        result = repository.get_active()
+
+        assert result == []
+        mock_session.scalars.assert_called_once()
+
     def test_has_overlapping_active_agreement(self, repository: AgreementRepository, mock_session: MagicMock) -> None:
         rental_space_id = uuid.uuid4()
         mock_session.scalar.return_value = None

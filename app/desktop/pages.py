@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QWidget
 from app.desktop.agreement_page import AgreementsPage
 from app.desktop.billing_page import BillingPage
 from app.desktop.components.page import PlaceholderPage
+from app.desktop.dashboard_page import DashboardPage
 from app.desktop.deposit_page import DepositsPage
 from app.desktop.expense_page import ExpensesPage
 from app.desktop.navigation import NavigationRegistry, NavItem
@@ -28,7 +29,16 @@ _DESCRIPTIONS: dict[str, str] = {
     "settings": "Configure application preferences.",
 }
 
-_REAL_PAGES: set[str] = {"properties", "tenants", "agreements", "billing", "payments", "deposits", "expenses"}
+_REAL_PAGES: set[str] = {
+    "dashboard",
+    "properties",
+    "tenants",
+    "agreements",
+    "billing",
+    "payments",
+    "deposits",
+    "expenses",
+}
 
 
 def build_navigation(runner: ServiceRunner | None = None) -> NavigationRegistry:
@@ -77,6 +87,8 @@ def _make_real_page_factory(
     description: str,
 ) -> Callable[[], QWidget]:
     def factory() -> QWidget:
+        if key == "dashboard":
+            return DashboardPage(runner=runner, title=label, subtitle=description)
         if key == "properties":
             return PropertiesPage(runner=runner, title=label, subtitle=description)
         if key == "tenants":

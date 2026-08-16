@@ -84,6 +84,23 @@ class BillRepository(RepositoryBase[Bill]):
         models = self.session.scalars(stmt).all()
         return [self._to_entity(m) for m in models]
 
+    def get_by_billing_date_range(
+        self,
+        start_date: date,
+        end_date: date,
+        limit: int = 1000,
+        offset: int = 0,
+    ) -> list[Bill]:
+        stmt = (
+            select(BillModel)
+            .where(BillModel.billing_date >= start_date, BillModel.billing_date <= end_date)
+            .order_by(BillModel.billing_date)
+            .offset(offset)
+            .limit(limit)
+        )
+        models = self.session.scalars(stmt).all()
+        return [self._to_entity(m) for m in models]
+
     def update(self, entity: Bill) -> Bill:
         model = self.session.get(BillModel, entity.id)
         if not model:

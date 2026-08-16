@@ -7,7 +7,7 @@ from decimal import Decimal
 from app.core.exceptions import NotFoundError, ValidationError
 from app.domain.entities import Bill, Payment, PaymentAllocation
 from app.domain.enums import BillStatus, PaymentMethod, PaymentStatus
-from app.domain.value_objects import BillBalance, Money
+from app.domain.value_objects import BillBalance, Money, MonthlySummary
 from app.infrastructure.repositories import (
     BillRepository,
     PaymentAllocationRepository,
@@ -218,6 +218,39 @@ class PaymentService:
             for bill in bills
             if bill.status == BillStatus.CONFIRMED and self.calculate_bill_balance(bill.id).outstanding.amount > 0
         ]
+
+    def get_outstanding_bills(self, limit: int = 100, offset: int = 0) -> list[tuple[Bill, BillBalance]]:
+        """Return confirmed bills with an outstanding amount, paired with their balance."""
+        bills = self._bill_repository.get_by_status(BillStatus.CONFIRMED, limit=limit, offset=offset)
+        rows: list[tuple[Bill, BillBalance]] = []
+        for bill in bills:
+            balance = self.calculate_bill_balance(bill.id)
+            if balance.outstanding.amount > 0:
+                rows.append((bill, balance))
+        return rows
+
+    def calculate_monthly_summary(self, year: int, month: int) -> MonthlySummary:
+        """Return billed, paid and outstanding totals for a calendar month.
+
+        Only confirmed bills with a billing date within the month are counted.
+        Payment allocations remain the source of truth for paid and outstanding
+        amounts; the dashboard never derives these itself.
+        """
+        month_start = date(year, month, 1)
+        next_month = month + 1
+        month_end_year = year + 1 if next_month == 13 else year
+        month_end_month = 1 if next_month == 13 else next_month
+        month_end = date(month_end_year, month_end_month, 1)
+        bills = self._bill_repository.get_by_billing_date_range(month_start, month_end, limit=10000)
+        confirmed = [bill for bill in bills if bill.status == BillStatus.CONFIRMED]
+
+        billed = Money(sum((bill.total.amount for bill in confirmed), Decimal("0")))
+        paid = Money(Decimal("0"))
+        for bill in confirmed:
+            balance = self.calculate_bill_balance(bill.id)
+            paid = Money(paid.amount + balance.allocated.amount)
+        outstanding = Money(billed.amount - paid.amount)
+        return MonthlySummary(billed=billed, paid=paid, outstanding=outstanding)
 
     # ------------------------------------------------------------------
     # Helpers

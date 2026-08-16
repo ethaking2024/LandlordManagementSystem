@@ -60,6 +60,9 @@ class RentalSpaceService:
     def get_active_rental_spaces(self, property_id: uuid.UUID) -> list[RentalSpace]:
         return self._repository.get_active_spaces(property_id)
 
+    def get_all_rental_spaces(self, limit: int = 100, offset: int = 0) -> list[RentalSpace]:
+        return self._repository.get_all(limit=limit, offset=offset)
+
     def update_rental_space(
         self,
         rental_space_id: uuid.UUID,

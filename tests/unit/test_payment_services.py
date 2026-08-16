@@ -608,3 +608,112 @@ class TestGetAllocatableBills:
         result = service.get_allocatable_bills(tenant.id)
 
         assert result == []
+
+
+class TestGetOutstandingBills:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_confirmed_with_outstanding_returned(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        owed = _confirmed_bill(tenant.id, "20000")
+        paid_off = _confirmed_bill(tenant.id, "20000")
+        draft = _confirmed_bill(tenant.id, "20000")
+        draft.status = BillStatus.DRAFT
+
+        confirmed = [owed, paid_off]
+        service._bill_repository.get_by_status.side_effect = lambda status, limit=100, offset=0: (
+            confirmed if status == BillStatus.CONFIRMED else []
+        )
+        service._bill_repository.get.side_effect = lambda bill_id: next(b for b in confirmed if b.id == bill_id)
+
+        paid_allocation = PaymentAllocation(
+            payment_id=uuid.uuid4(),
+            bill_id=paid_off.id,
+            allocated_amount=Money(Decimal("20000")),
+        )
+
+        def _valid_by_bill(bill_id):
+            return [paid_allocation] if bill_id == paid_off.id else []
+
+        service._payment_allocation_repository.get_valid_by_bill.side_effect = _valid_by_bill
+
+        result = service.get_outstanding_bills()
+
+        service._bill_repository.get_by_status.assert_called_once_with(BillStatus.CONFIRMED, limit=100, offset=0)
+        assert len(result) == 1
+        bill, balance = result[0]
+        assert bill is owed
+        assert balance.outstanding.amount == Decimal("20000.00")
+
+    def test_get_outstanding_bills_empty(self, service: PaymentService) -> None:
+        service._bill_repository.get_by_status.return_value = []
+        service._payment_allocation_repository.get_valid_by_bill.return_value = []
+
+        result = service.get_outstanding_bills()
+
+        assert result == []
+
+
+class TestCalculateMonthlySummary:
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+
+    def test_monthly_summary_totals(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        bill = _confirmed_bill(tenant.id, "20000")
+        bill.billing_date = date(2026, 1, 15)
+        service._bill_repository.get_by_billing_date_range.return_value = [bill]
+        service._bill_repository.get.return_value = bill
+        allocation = PaymentAllocation(
+            payment_id=uuid.uuid4(),
+            bill_id=bill.id,
+            allocated_amount=Money(Decimal("12000")),
+        )
+        service._payment_allocation_repository.get_valid_by_bill.return_value = [allocation]
+
+        summary = service.calculate_monthly_summary(2026, 1)
+
+        assert summary.billed.amount == Decimal("20000.00")
+        assert summary.paid.amount == Decimal("12000.00")
+        assert summary.outstanding.amount == Decimal("8000.00")
+
+    def test_monthly_summary_excludes_draft_bills(self, service: PaymentService) -> None:
+        tenant = _tenant()
+        draft = _confirmed_bill(tenant.id, "20000")
+        draft.status = BillStatus.DRAFT
+        draft.billing_date = date(2026, 1, 15)
+        service._bill_repository.get_by_billing_date_range.return_value = [draft]
+        service._payment_allocation_repository.get_valid_by_bill.return_value = []
+
+        summary = service.calculate_monthly_summary(2026, 1)
+
+        assert summary.billed.amount == Decimal("0.00")
+        assert summary.paid.amount == Decimal("0.00")
+        assert summary.outstanding.amount == Decimal("0.00")
+
+    def test_monthly_summary_delegates_to_billing_date_range(self, service: PaymentService) -> None:
+        service._bill_repository.get_by_billing_date_range.return_value = []
+        service._payment_allocation_repository.get_valid_by_bill.return_value = []
+
+        service.calculate_monthly_summary(2026, 1)
+
+        service._bill_repository.get_by_billing_date_range.assert_called_once_with(
+            date(2026, 1, 1),
+            date(2026, 2, 1),
+            limit=10000,
+        )
+
+    def test_monthly_summary_handles_december_rollover(self, service: PaymentService) -> None:
+        service._bill_repository.get_by_billing_date_range.return_value = []
+        service._payment_allocation_repository.get_valid_by_bill.return_value = []
+
+        service.calculate_monthly_summary(2026, 12)
+
+        service._bill_repository.get_by_billing_date_range.assert_called_once_with(
+            date(2026, 12, 1),
+            date(2027, 1, 1),
+            limit=10000,
+        )
