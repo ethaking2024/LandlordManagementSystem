@@ -127,3 +127,24 @@ def run_with_services(database):
             return operation(services)
 
     return _run
+
+
+@pytest.fixture
+def runner(database):
+    """A real ServiceRunner wired to the landlord_test database.
+
+    This is the same wiring the desktop UI uses: ServiceRunner ->
+    DatabaseSession -> application services -> repositories -> PostgreSQL.
+    """
+    from app.desktop.services import DatabaseSession, ServiceRunner
+
+    return ServiceRunner(DatabaseSession(database))
+
+
+@pytest.fixture
+def app_window(qapp, database):
+    """A real MainWindow wired to the landlord_test database."""
+    from app.desktop.main_window import MainWindow
+    from app.desktop.services import DatabaseSession
+
+    return MainWindow(database_session=DatabaseSession(database))

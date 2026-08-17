@@ -248,12 +248,13 @@ class RentalSpaceFormDialog(BaseDialog):
 
         floor_label = self._floor_edit.text().strip() or None
         description = self._description_edit.toPlainText().strip() or None
+        space_type_enum = SpaceType(space_type)
         if self._space_data:
             self._result = self._runner.run(
                 lambda s: s.rental_space().update_rental_space(
                     self._space_data["id"],
                     name=name,
-                    space_type=space_type,
+                    space_type=space_type_enum,
                     floor_label=floor_label,
                     description=description,
                 ),
@@ -264,7 +265,7 @@ class RentalSpaceFormDialog(BaseDialog):
                 lambda s: s.rental_space().create_rental_space(
                     property_id=self._property_id,
                     name=name,
-                    space_type=space_type,
+                    space_type=space_type_enum,
                     floor_label=floor_label,
                     description=description,
                 ),

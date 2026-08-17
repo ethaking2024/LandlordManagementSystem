@@ -136,6 +136,7 @@ class RecordPaymentDialog(BaseDialog):
             return
 
         amount = Money(Decimal(amount_text))
+        method_enum = PaymentMethod(method)
         reference = self._reference_edit.text().strip() or None
         notes = self._notes_edit.toPlainText().strip() or None
         self._result = self._runner.run(
@@ -143,7 +144,7 @@ class RecordPaymentDialog(BaseDialog):
                 tenant_id,
                 payment_date,
                 amount,
-                method,
+                method_enum,
                 reference=reference,
                 notes=notes,
             ),

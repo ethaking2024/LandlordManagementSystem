@@ -212,13 +212,14 @@ class ExpenseDialog(BaseDialog):
             return
 
         amount = Money(Decimal(amount_text))
+        category_enum = ExpenseCategory(category)
         description = self._description_edit.toPlainText().strip() or None
         reference = self._reference_edit.text().strip() or None
         self._result = self._runner.run(
             lambda s: s.expense().record_expense(
                 property_id,
                 expense_date,
-                category,
+                category_enum,
                 amount,
                 description=description,
                 rental_space_id=space_id,
