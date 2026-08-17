@@ -30,8 +30,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
 
+    # Disable dotenv so a local .env file cannot satisfy the required DATABASE_URL.
     with pytest.raises(ValidationError):
-        Settings()
+        Settings(_env_file=None)
 
 
 @pytest.mark.unit
@@ -41,6 +42,9 @@ def test_get_database_url() -> None:
 
     from app.core.config import get_settings
 
+    # The settings cache may already be populated by other tests; clear it so the
+    # environment set above is reflected.
+    get_settings.cache_clear()
     settings = get_settings()
 
     assert settings.get_database_url(testing=False) == "postgresql+psycopg://user:pass@localhost:5432/lms_dev"
