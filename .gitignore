@@ -45,18 +45,20 @@ build/
 *.egg
 *.whl
 *.tar.gz
-*.spec
 
 # PyInstaller
-*.spec
 build/
 dist/
+
+# Keep the packaging spec under version control for repeatable builds
+!packaging/LMS.spec
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
 *.pgdump
+*.dump
 *.sql
 postgresql_data/
 data/

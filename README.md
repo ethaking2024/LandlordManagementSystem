@@ -5,7 +5,7 @@ A simple, professional, lightweight landlord management system for Windows, desi
 ## Status
 
 **Planning:** Complete and locked  
-**Current implementation phase:** Release 0.0 — Repository Initialization  
+**Current implementation phase:** Release 0.8 — Hardening (packaging prepared)  
 **Target:** Windows desktop first; FastAPI/mobile later
 
 ## Technology
@@ -26,6 +26,8 @@ A simple, professional, lightweight landlord management system for Windows, desi
 - [Development Protocol](docs/LMS_DEVELOPMENT_PROTOCOL.md)
 - [Release Roadmap](docs/LMS_RELEASE_ROADMAP.md)
 - [Release 0.0 Initialization](docs/LMS_RELEASE_0_0_INITIALIZATION.md)
+- [Installation Guide (end users)](docs/LMS_INSTALLATION_GUIDE.md)
+- [Release Packaging (build guide)](docs/LMS_RELEASE_PACKAGING.md)
 
 ## Development Principle
 

@@ -215,9 +215,9 @@ def test_postgres_backup_restore_command() -> None:
 
 
 @pytest.mark.unit
-def test_postgres_backup_verify_archive_ok() -> None:
+def test_postgres_backup_verify_archive_ok(tmp_path: Path) -> None:
     tool = PostgresBackup(make_url(DB_URL), pg_bin_dir=r"C:\pg\bin")
-    path = Path("backup.dump")
+    path = tmp_path / "backup.dump"
     path.write_bytes(b"archive")
 
     with patch("app.infrastructure.backup.subprocess.run") as run:
@@ -226,13 +226,13 @@ def test_postgres_backup_verify_archive_ok() -> None:
 
     command = run.call_args.args[0]
     assert command[0] == r"C:\pg\bin\pg_restore.exe"
-    assert command[-1] == "backup.dump"
+    assert command[-1] == str(path)
 
 
 @pytest.mark.unit
-def test_postgres_backup_verify_archive_invalid() -> None:
+def test_postgres_backup_verify_archive_invalid(tmp_path: Path) -> None:
     tool = PostgresBackup(make_url(DB_URL), pg_bin_dir=r"C:\pg\bin")
-    path = Path("backup.dump")
+    path = tmp_path / "backup.dump"
     path.write_bytes(b"archive")
 
     with patch("app.infrastructure.backup.subprocess.run") as run:
@@ -241,9 +241,9 @@ def test_postgres_backup_verify_archive_invalid() -> None:
 
 
 @pytest.mark.unit
-def test_postgres_backup_verify_archive_empty_file() -> None:
+def test_postgres_backup_verify_archive_empty_file(tmp_path: Path) -> None:
     tool = PostgresBackup(make_url(DB_URL), pg_bin_dir=r"C:\pg\bin")
-    path = Path("empty.dump")
+    path = tmp_path / "empty.dump"
     path.write_bytes(b"")
 
     assert tool.verify_archive(path) is False

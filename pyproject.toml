@@ -1,6 +1,6 @@
 [project]
 name = "lms"
-version = "0.0.0"
+version = "0.8.5"
 description = "Landlord Management System - A simple, professional landlord management system for Windows"
 readme = "README.md"
 license = {text = "MIT"}

@@ -108,9 +108,11 @@ def test_navigation_with_runner_creates_real_properties_page(qapp) -> None:
 def test_sidebar_version_label_shows_current_release(main_window: MainWindow) -> None:
     from PySide6.QtWidgets import QLabel
 
+    from app.core.version import RELEASE_LABEL
+
     version_label = main_window.findChild(QLabel, "sidebarVersion")
     assert version_label is not None
-    assert version_label.text() == "Release 0.8"
+    assert version_label.text() == f"Release {RELEASE_LABEL}"
 
 
 @pytest.mark.unit

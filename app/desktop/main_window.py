@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.version import RELEASE_LABEL
 from app.desktop.navigation import NavigationRegistry
 from app.desktop.pages import build_navigation
 from app.desktop.services import DatabaseSession, ServiceRunner
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
         self._sidebar_list.currentItemChanged.connect(self._on_sidebar_item_changed)
         layout.addWidget(self._sidebar_list, stretch=1)
 
-        version = QLabel("Release 0.8")
+        version = QLabel(f"Release {RELEASE_LABEL}")
         version.setObjectName("sidebarVersion")
         layout.addWidget(version)
 

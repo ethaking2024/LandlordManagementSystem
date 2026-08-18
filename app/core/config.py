@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -9,9 +10,58 @@ from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def get_project_root() -> Path:
+    return Path(__file__).parent.parent.parent
+
+
+def get_app_data_dir() -> Path:
+    """User-data directory for LMS, kept outside the application/executable folder.
+
+    This is where per-user configuration and derived user data live so they
+    survive application upgrades. On Windows this is ``%LOCALAPPDATA%\\LMS`` and
+    elsewhere ``~/.lms``.
+    """
+    home = Path.home()
+    if os.name == "nt":
+        local_app_data = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local")))
+        return local_app_data / "LMS"
+    return home / ".lms"
+
+
+def get_config_dir() -> Path:
+    """Directory that owns the application's ``.env`` file.
+
+    In a packaged (frozen) build this is the folder containing the executable so
+    a landlord can edit configuration next to the program they launch. In
+    development it is the current working directory, matching the historical
+    behaviour of loading ``.env`` from the project root.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path.cwd()
+
+
+def _resolve_env_file() -> Path:
+    """Locate the ``.env`` file used by :class:`Settings`.
+
+    Frozen builds first look next to the executable and then fall back to the
+    per-user application data directory; development uses ``.env`` in the
+    working directory.
+    """
+    config_dir = get_config_dir()
+    env_file = config_dir / ".env"
+    if env_file.exists():
+        return env_file
+    if getattr(sys, "frozen", False):
+        user_env = get_app_data_dir() / ".env"
+        if user_env.exists():
+            return user_env
+    return env_file
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_resolve_env_file(),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -57,18 +107,10 @@ def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
 
 
-def get_project_root() -> Path:
-    return Path(__file__).parent.parent.parent
-
-
 def get_default_backup_dir() -> Path:
     """User-data directory for backups, kept separate from application files.
 
     Backups are user data and must survive application upgrades, so they live
     outside the installation folder.
     """
-    home = Path.home()
-    if os.name == "nt":
-        local_app_data = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local")))
-        return local_app_data / "LMS" / "Backups"
-    return home / ".lms" / "backups"
+    return get_app_data_dir() / "Backups"
