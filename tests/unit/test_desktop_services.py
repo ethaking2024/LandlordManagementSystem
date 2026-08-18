@@ -55,6 +55,22 @@ def test_services_expose_service_factories() -> None:
 
 
 @pytest.mark.unit
+def test_services_backup_requires_configuration() -> None:
+    session = MagicMock()
+    services = Services(Repositories(session))
+    with pytest.raises(Exception, match="Backup service is not configured"):
+        services.backup()
+
+
+@pytest.mark.unit
+def test_services_backup_returns_configured_service() -> None:
+    session = MagicMock()
+    backup = MagicMock()
+    services = Services(Repositories(session), backup_service=backup)
+    assert services.backup() is backup
+
+
+@pytest.mark.unit
 def test_database_session_opens_session_per_scope() -> None:
     database = MagicMock()
     session = MagicMock()

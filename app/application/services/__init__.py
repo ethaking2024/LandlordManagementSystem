@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from app.application.services.agreement_service import AgreementService
+from app.application.services.backup_service import (
+    BackupResult,
+    BackupService,
+    RestoreResult,
+    VerificationResult,
+)
 from app.application.services.billing_service import BillingService
 from app.application.services.deposit_service import DepositService
 from app.application.services.expense_service import ExpenseService
@@ -32,4 +38,8 @@ __all__ = [
     "DepositService",
     "ExpenseService",
     "ReportService",
+    "BackupService",
+    "BackupResult",
+    "VerificationResult",
+    "RestoreResult",
 ]

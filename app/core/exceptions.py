@@ -44,3 +44,7 @@ class ApplicationError(LMSError):
 
 class ReportError(LMSError):
     """Raised when a report cannot be generated or exported."""
+
+
+class BackupError(LMSError):
+    """Raised when a database backup or restore operation fails."""

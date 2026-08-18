@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -30,6 +31,9 @@ class Settings(BaseSettings):
     )
     log_format: Literal["json", "text"] = Field(default="json", validation_alias="LOG_FORMAT")
 
+    pg_bin_dir: str | None = Field(default=None, validation_alias="PG_BIN_DIR")
+    backup_dir: str | None = Field(default=None, validation_alias="BACKUP_DIR")
+
     @property
     def is_development(self) -> bool:
         return self.app_env == "development"
@@ -55,3 +59,16 @@ def get_settings() -> Settings:
 
 def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
+
+
+def get_default_backup_dir() -> Path:
+    """User-data directory for backups, kept separate from application files.
+
+    Backups are user data and must survive application upgrades, so they live
+    outside the installation folder.
+    """
+    home = Path.home()
+    if os.name == "nt":
+        local_app_data = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local")))
+        return local_app_data / "LMS" / "Backups"
+    return home / ".lms" / "backups"

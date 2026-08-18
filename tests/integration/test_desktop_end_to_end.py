@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PySide6.QtWidgets import QDialog
 
-from app.desktop.components.page import PlaceholderPage
 from app.desktop.property_page import PropertiesPage
 from app.desktop.services import OPERATION_FAILED
+from app.desktop.settings_page import SettingsPage
 from app.domain.enums import (
     AgreementStatus,
     BillStatus,
@@ -107,7 +107,7 @@ def test_main_window_boots_with_real_database_and_navigates_all_pages(app_window
 
     assert isinstance(window._pages["dashboard"], DashboardPage)
     assert isinstance(window._pages["properties"], PropertiesPage)
-    assert isinstance(window._pages["settings"], PlaceholderPage)
+    assert isinstance(window._pages["settings"], SettingsPage)
 
 
 @pytest.mark.integration

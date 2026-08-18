@@ -56,3 +56,38 @@ def test_project_root() -> None:
     root = get_project_root()
     assert root.name == "LandlordManagementSystem"
     assert (root / "pyproject.toml").exists()
+
+
+@pytest.mark.unit
+def test_settings_backup_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PG_BIN_DIR", raising=False)
+    monkeypatch.delenv("BACKUP_DIR", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/testdb")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.pg_bin_dir is None
+    assert settings.backup_dir is None
+
+
+@pytest.mark.unit
+def test_settings_backup_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/testdb")
+    monkeypatch.setenv("PG_BIN_DIR", r"C:\PostgreSQL\17\bin")
+    monkeypatch.setenv("BACKUP_DIR", r"C:\data\lms-backups")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.pg_bin_dir == r"C:\PostgreSQL\17\bin"
+    assert settings.backup_dir == r"C:\data\lms-backups"
+
+
+@pytest.mark.unit
+def test_default_backup_dir_is_user_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_default_backup_dir
+
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\tester\AppData\Local")
+
+    backup_dir = get_default_backup_dir()
+
+    assert str(backup_dir).lower().endswith("lms" + os.sep + "backups") or "backups" in str(backup_dir)

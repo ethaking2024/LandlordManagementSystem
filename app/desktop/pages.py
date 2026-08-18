@@ -15,6 +15,7 @@ from app.desktop.payment_page import PaymentsPage
 from app.desktop.property_page import PropertiesPage
 from app.desktop.reports_page import ReportsPage
 from app.desktop.services import ServiceRunner
+from app.desktop.settings_page import SettingsPage
 from app.desktop.tenant_page import TenantsPage
 
 _DESCRIPTIONS: dict[str, str] = {
@@ -40,6 +41,7 @@ _REAL_PAGES: set[str] = {
     "deposits",
     "expenses",
     "reports",
+    "settings",
 }
 
 
@@ -107,6 +109,8 @@ def _make_real_page_factory(
             return ExpensesPage(runner=runner, title=label, subtitle=description)
         if key == "reports":
             return ReportsPage(runner=runner, title=label, subtitle=description)
+        if key == "settings":
+            return SettingsPage(runner=runner, title=label, subtitle=description)
         raise ValueError(f"Unhandled real page key: {key}")
 
     return factory
