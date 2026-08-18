@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, timedelta
+from enum import Enum
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -63,6 +64,17 @@ _REPORT_TITLES: dict[str, str] = {
     "deposit": "Deposits",
     "summary": "Property Income & Expense Summary",
 }
+
+def _coerce_enum[EnumT: Enum](value, enum_type: type[EnumT]) -> EnumT | None:
+    """Convert a combo data value back to its domain enum, or None for 'All'.
+
+    PySide6 coerces stored StrEnum members to plain ``str`` via
+    ``QComboBox.currentData()``, so filter values are converted back to the
+    domain enums the report services expect.
+    """
+    if value is None:
+        return None
+    return enum_type(value)
 
 _HEADERS: dict[str, list[str]] = {
     "billing": list(BILLING_HEADERS),
@@ -306,18 +318,33 @@ class ReportsPage(Page):
             self._status_combo.setEnabled(False)
 
     def _filters(self) -> ReportFilters:
+        status_value = self._status_combo.currentData()
         return ReportFilters(
             from_date=self._from_input.value(),
             to_date=self._to_input.value(),
             property_id=self._property_combo.currentData(),
             tenant_id=self._tenant_combo.currentData(),
             rental_space_id=self._space_combo.currentData(),
-            bill_status=self._status_combo.currentData() if self._report_type == "billing" else None,
-            payment_method=self._method_combo.currentData() if self._report_type == "payment" else None,
-            payment_status=self._status_combo.currentData() if self._report_type == "payment" else None,
-            expense_category=self._category_combo.currentData() if self._report_type == "expense" else None,
-            expense_status=self._status_combo.currentData() if self._report_type == "expense" else None,
-            deposit_status=self._status_combo.currentData() if self._report_type == "deposit" else None,
+            bill_status=_coerce_enum(status_value, BillStatus) if self._report_type == "billing" else None,
+            payment_method=(
+                _coerce_enum(self._method_combo.currentData(), PaymentMethod)
+                if self._report_type == "payment"
+                else None
+            ),
+            payment_status=(
+                _coerce_enum(status_value, PaymentStatus) if self._report_type == "payment" else None
+            ),
+            expense_category=(
+                _coerce_enum(self._category_combo.currentData(), ExpenseCategory)
+                if self._report_type == "expense"
+                else None
+            ),
+            expense_status=(
+                _coerce_enum(status_value, ExpenseStatus) if self._report_type == "expense" else None
+            ),
+            deposit_status=(
+                _coerce_enum(status_value, DepositStatus) if self._report_type == "deposit" else None
+            ),
         )
 
     # ------------------------------------------------------------------

@@ -20,6 +20,7 @@ from app.desktop.components.dialogs import BaseDialog, ConfirmationDialog
 from app.desktop.components.form import FormWidget
 from app.desktop.dates import DateInput, format_date_display
 from app.desktop.services import OPERATION_FAILED, ServiceRunner
+from app.desktop.validation import is_decimal
 from app.domain.enums import ExpenseCategory, ExpenseStatus
 from app.domain.value_objects import Money
 
@@ -45,14 +46,6 @@ def format_money(amount: Any) -> str:
     if amount is None:
         return ""
     return f"NPR {amount}"
-
-
-def _is_decimal(text: str) -> bool:
-    try:
-        Decimal(text)
-        return True
-    except Exception:
-        return False
 
 
 class ExpenseDialog(BaseDialog):
@@ -205,7 +198,7 @@ class ExpenseDialog(BaseDialog):
         if not amount_text:
             self._form_widget.set_error("amount", "An amount is required.")
             valid = False
-        elif not _is_decimal(amount_text):
+        elif not is_decimal(amount_text):
             self._form_widget.set_error("amount", "Enter a valid amount.")
             valid = False
         if not valid:

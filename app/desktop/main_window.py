@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
         self._sidebar_list.currentItemChanged.connect(self._on_sidebar_item_changed)
         layout.addWidget(self._sidebar_list, stretch=1)
 
-        version = QLabel("Release 0.7B")
+        version = QLabel("Release 0.8")
         version.setObjectName("sidebarVersion")
         layout.addWidget(version)
 

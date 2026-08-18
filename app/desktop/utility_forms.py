@@ -18,6 +18,7 @@ from app.desktop.components.dialogs import BaseDialog
 from app.desktop.components.form import FormWidget
 from app.desktop.dates import DateInput, format_date_display
 from app.desktop.services import OPERATION_FAILED, ServiceRunner
+from app.desktop.validation import is_decimal
 from app.domain.enums import ElectricityConfigType, UtilityType, WaterConfigType
 
 _ELECTRICITY_TYPES: list[tuple[str, str]] = [
@@ -135,7 +136,7 @@ class UtilityConfigDialog(BaseDialog):
             return
         fixed_text = self._amount_edit.text().strip()
         fixed_amount: str | None = fixed_text if fixed_text else None
-        if fixed_amount is not None and not self._is_decimal(fixed_amount):
+        if fixed_amount is not None and not is_decimal(fixed_amount):
             self._form.set_error("fixed_amount", "Enter a valid amount.")
             return
 
@@ -162,14 +163,6 @@ class UtilityConfigDialog(BaseDialog):
         if self._result is OPERATION_FAILED:
             return
         self.accept()
-
-    @staticmethod
-    def _is_decimal(text: str) -> bool:
-        try:
-            Decimal(text)
-            return True
-        except Exception:
-            return False
 
     def result_config(self) -> Any:
         return self._result
@@ -305,7 +298,7 @@ class MeterReadingFormDialog(BaseDialog):
         if not value:
             self._form.set_error("value", "A reading value is required.")
             return
-        if not self._is_decimal(value):
+        if not is_decimal(value):
             self._form.set_error("value", "Enter a valid reading value.")
             return
 
@@ -321,14 +314,6 @@ class MeterReadingFormDialog(BaseDialog):
         if self._result is OPERATION_FAILED:
             return
         self.accept()
-
-    @staticmethod
-    def _is_decimal(text: str) -> bool:
-        try:
-            Decimal(text)
-            return True
-        except Exception:
-            return False
 
     def result_reading(self) -> Any:
         return self._result
@@ -403,13 +388,13 @@ class MeterReplacementDialog(BaseDialog):
         if not final_reading:
             self._form.set_error("final_reading", "A final reading is required.")
             valid = False
-        elif not self._is_decimal(final_reading):
+        elif not is_decimal(final_reading):
             self._form.set_error("final_reading", "Enter a valid reading.")
             valid = False
         if not initial_reading:
             self._form.set_error("initial_reading", "An initial reading is required.")
             valid = False
-        elif not self._is_decimal(initial_reading):
+        elif not is_decimal(initial_reading):
             self._form.set_error("initial_reading", "Enter a valid reading.")
             valid = False
         if not valid:
@@ -429,14 +414,6 @@ class MeterReplacementDialog(BaseDialog):
         if self._result is OPERATION_FAILED:
             return
         self.accept()
-
-    @staticmethod
-    def _is_decimal(text: str) -> bool:
-        try:
-            Decimal(text)
-            return True
-        except Exception:
-            return False
 
     def result_replacement(self) -> Any:
         return self._result

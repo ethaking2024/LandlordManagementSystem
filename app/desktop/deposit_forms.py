@@ -21,6 +21,7 @@ from app.desktop.components.dialogs import BaseDialog, ConfirmationDialog
 from app.desktop.components.form import FormWidget
 from app.desktop.dates import DateInput, format_date_display
 from app.desktop.services import OPERATION_FAILED, ServiceRunner
+from app.desktop.validation import is_decimal
 from app.domain.enums import DepositStatus
 from app.domain.value_objects import Money
 
@@ -33,14 +34,6 @@ def format_money(amount: Any) -> str:
     if amount is None:
         return ""
     return f"NPR {amount}"
-
-
-def _is_decimal(text: str) -> bool:
-    try:
-        Decimal(text)
-        return True
-    except Exception:
-        return False
 
 
 class RecordDepositDialog(BaseDialog):
@@ -141,7 +134,7 @@ class RecordDepositDialog(BaseDialog):
         if not amount_text:
             self._form_widget.set_error("amount", "A deposit amount is required.")
             valid = False
-        elif not _is_decimal(amount_text):
+        elif not is_decimal(amount_text):
             self._form_widget.set_error("amount", "Enter a valid amount.")
             valid = False
         if not self._received_date_input.is_valid():
@@ -314,7 +307,7 @@ class SettlementDialog(BaseDialog):
             amount_text = row.amount_text()
             if not reason and not amount_text:
                 continue
-            if reason and _is_decimal(amount_text) and Decimal(amount_text) > 0:
+            if reason and is_decimal(amount_text) and Decimal(amount_text) > 0:
                 pairs.append((Decimal(amount_text), reason))
         return pairs
 
@@ -341,7 +334,7 @@ class SettlementDialog(BaseDialog):
             self._form_widget.set_error("settlement_date", "A settlement date is required.")
             return
 
-        invalid = [row for row in self._deduction_rows if row.reason() and not _is_decimal(row.amount_text())]
+        invalid = [row for row in self._deduction_rows if row.reason() and not is_decimal(row.amount_text())]
         if invalid:
             self._expected_label.setText("Enter a valid amount for every deduction reason.")
             return

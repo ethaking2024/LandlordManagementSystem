@@ -248,6 +248,57 @@ def test_reports_page_switch_report_type_updates_filters(page) -> None:
 
 
 @pytest.mark.unit
+def test_reports_page_filters_coerce_combos_to_domain_enums(page) -> None:
+    """Filter values must be converted back to domain enums for the typed ReportFilters."""
+    reports_page, runner = page
+    runner.property.get_all_properties.return_value = []
+    runner.tenant.get_all_tenants.return_value = []
+    runner.rental_space.get_all_rental_spaces.return_value = []
+
+    billing_status_index = next(
+        i
+        for i in range(reports_page._status_combo.count())
+        if reports_page._status_combo.itemData(i) == BillStatus.CONFIRMED.value
+    )
+    reports_page._status_combo.setCurrentIndex(billing_status_index)
+    filters = reports_page._filters()
+    assert filters.bill_status is BillStatus.CONFIRMED
+
+    for i in range(reports_page._report_combo.count()):
+        if reports_page._report_combo.itemData(i) == "payment":
+            reports_page._report_combo.setCurrentIndex(i)
+            break
+
+    method_index = next(
+        i
+        for i in range(reports_page._method_combo.count())
+        if reports_page._method_combo.itemData(i) == PaymentMethod.CASH.value
+    )
+    reports_page._method_combo.setCurrentIndex(method_index)
+    payment_status_index = next(
+        i
+        for i in range(reports_page._status_combo.count())
+        if reports_page._status_combo.itemData(i) == PaymentStatus.RECORDED.value
+    )
+    reports_page._status_combo.setCurrentIndex(payment_status_index)
+
+    filters = reports_page._filters()
+    assert filters.payment_method is PaymentMethod.CASH
+    assert filters.payment_status is PaymentStatus.RECORDED
+    assert filters.bill_status is None
+
+    for i in range(reports_page._report_combo.count()):
+        if reports_page._report_combo.itemData(i) == "expense":
+            reports_page._report_combo.setCurrentIndex(i)
+            break
+
+    filters = reports_page._filters()
+    assert filters.expense_status is None
+    assert filters.expense_category is None
+    assert filters.payment_method is None
+
+
+@pytest.mark.unit
 def test_reports_page_summary_report_disables_status(page) -> None:
     reports_page, runner = page
     runner.property.get_all_properties.return_value = []

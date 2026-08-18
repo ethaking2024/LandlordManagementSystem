@@ -22,6 +22,7 @@ from app.desktop.components.form import FormWidget
 from app.desktop.dates import DateInput, format_date_display
 from app.desktop.services import OPERATION_FAILED, ServiceRunner
 from app.desktop.tenant_forms import TenantFormDialog
+from app.desktop.validation import is_decimal
 from app.domain.enums import AgreementStatus
 
 
@@ -156,7 +157,7 @@ class AgreementFormDialog(BaseDialog):
         if not rent_text:
             self._form.set_error("monthly_rent", "Monthly rent is required.")
             valid = False
-        elif not self._is_decimal(rent_text):
+        elif not is_decimal(rent_text):
             self._form.set_error("monthly_rent", "Enter a valid amount.")
             valid = False
         if not self._start_input.is_valid():
@@ -172,7 +173,7 @@ class AgreementFormDialog(BaseDialog):
             return
 
         deposit_text = self._deposit_edit.text().strip() or None
-        if deposit_text and not self._is_decimal(deposit_text):
+        if deposit_text and not is_decimal(deposit_text):
             self._form.set_error("security_deposit", "Enter a valid amount.")
             return
         end_date = self._end_input.value()
@@ -204,14 +205,6 @@ class AgreementFormDialog(BaseDialog):
         if self._result is OPERATION_FAILED:
             return
         self.accept()
-
-    @staticmethod
-    def _is_decimal(text: str) -> bool:
-        try:
-            float(text)
-            return True
-        except ValueError:
-            return False
 
     def result_agreement(self) -> Any:
         return self._result
