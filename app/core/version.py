@@ -10,7 +10,7 @@ label shown in the application sidebar.
 APP_NAME = "Landlord Management System"
 ORGANIZATION_NAME = "LMS"
 
-VERSION = "0.8.6"
-VERSION_INFO = (0, 8, 6, 0)
+VERSION = "1.0.0"
+VERSION_INFO = (1, 0, 0, 0)
 
-RELEASE_LABEL = "0.8F"
+RELEASE_LABEL = "1.0.0"

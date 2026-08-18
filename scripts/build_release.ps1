@@ -19,7 +19,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-Write-Host "[build] LMS release 0.8F"
+Write-Host "[build] LMS release 1.0.0"
 
 # 1. Ensure build tooling is available.
 & $Python -m pip install --quiet "pyinstaller>=6.8.0" "psycopg[binary]"

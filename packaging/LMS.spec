@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the LMS desktop application (release 0.8E).
+# PyInstaller spec for the LMS desktop application (release 1.0.0).
 #
 # Build with: python -m PyInstaller --noconfirm --clean packaging/LMS.spec
 # Output: packaging/dist/LMS/LMS.exe

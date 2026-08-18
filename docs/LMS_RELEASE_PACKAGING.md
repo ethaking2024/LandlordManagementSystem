@@ -111,7 +111,7 @@ After a build:
 
 ## 7. Versioning
 
-- `app/core/version.py` holds `VERSION` (dotted, e.g. `0.8.6`) and `RELEASE_LABEL` (e.g. `0.8F`).
+- `app/core/version.py` holds `VERSION` (dotted, e.g. `1.0.0`) and `RELEASE_LABEL` (e.g. `1.0.0`).
 - `pyproject.toml` mirrors `VERSION`.
 - `packaging/version_info.txt` mirrors the same version for the Windows file resource and must be updated alongside `app/core/version.py` when releasing a new version.
 - The sidebar version label is derived from `RELEASE_LABEL`.

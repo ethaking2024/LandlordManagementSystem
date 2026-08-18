@@ -1,6 +1,6 @@
 # LMS Installation Guide — End Users
 
-This guide explains how a normal Windows user installs and runs the **Landlord Management System (LMS)** as a packaged desktop application. It assumes you are not a developer and have no Python or PyCharm installed.
+This guide explains how a normal Windows user installs and runs the **Landlord Management System (LMS)** version **1.0.0** as a packaged desktop application. It assumes you are not a developer and have no Python or PyCharm installed.
 
 LMS uses **PostgreSQL** for its database. PostgreSQL must be installed and a database created before the application can store data. This is a one-time setup.
 
@@ -9,7 +9,7 @@ LMS uses **PostgreSQL** for its database. PostgreSQL must be installed and a dat
 ## 1. System requirements
 
 - Windows 10 or Windows 11 (64-bit)
-- PostgreSQL 14 or newer (the free **PostgreSQL installer** from [postgresql.org](https://www.postgresql.org/download/windows/))
+- PostgreSQL 17 or a compatible supported PostgreSQL installation (the free **PostgreSQL installer** from [postgresql.org](https://www.postgresql.org/download/windows/))
 - The packaged `LMS` application folder (see section 3)
 
 No Python, PyCharm, or other development tools are required.
@@ -20,7 +20,7 @@ No Python, PyCharm, or other development tools are required.
 
 ### 2.1 Install PostgreSQL
 
-1. Download the PostgreSQL installer from <https://www.postgresql.org/download/windows/> (choose the latest 17.x or 16.x version).
+1. Download the PostgreSQL installer from <https://www.postgresql.org/download/windows/> (choose the latest 17.x, or another version LMS supports).
 2. Run the installer. When prompted for a **password** for the `postgres` superuser, choose a password you will remember and write it down.
 3. Accept the default port **5432**.
 4. The installer also installs the **PostgreSQL command line tools** (`pg_dump`, `pg_restore`, `psql`). LMS uses these tools for **Backup & Restore**, so leave them installed (they are installed by default).
@@ -53,7 +53,7 @@ CREATE DATABASE lms_dev OWNER lms_user;
 
 LMS reads its configuration from a file named `.env` located **next to `LMS.exe`**.
 
-1. In the `LMS` folder you will find `env.example` (a template).
+1. In the `LMS` folder you will find `.env.example` (a template; the leading dot is part of the name).
 2. Copy it and rename the copy to **`.env`**.
 3. Open `.env` with Notepad and set `DATABASE_URL` to your database. Replace `lms_user`, the password, and any other values you chose in section 2.2:
 
@@ -98,6 +98,8 @@ All settings live in the `.env` file next to `LMS.exe`.
 | Setting | Required | Description |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | PostgreSQL connection string, e.g. `postgresql+psycopg://lms_user:password@localhost:5432/lms_dev` |
+| `APP_ENV` | No | `production`, `development`, or `testing`. Defaults to `production` in the template. `development` enables extra diagnostic logging. |
+| `APP_DEBUG` | No | `true`/`false`. Defaults to `false` in the template. |
 | `PG_BIN_DIR` | No | Folder containing `pg_dump`/`pg_restore`/`psql`. Usually not needed; LMS finds the tools automatically. Only set it if the tools are installed somewhere unusual. |
 | `BACKUP_DIR` | No | Folder where backups are stored. Defaults to `%LOCALAPPDATA%\LMS\Backups` (your user data folder) — this keeps backups safe when you update the application. |
 | `LOG_LEVEL` | No | `DEBUG`, `INFO`, `WARNING`, `ERROR`. Defaults to `DEBUG`. |
