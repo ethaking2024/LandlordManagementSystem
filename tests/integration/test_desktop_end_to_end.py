@@ -351,3 +351,110 @@ def test_error_boundary_returns_operation_failed_without_crash(runner, repositor
         assert show_message.call_count == 1
 
     assert repositories.bill.get(bill.id) is not None
+
+
+@pytest.mark.integration
+def test_fresh_main_window_populates_data_pages_without_manual_refresh(app_window, runner, qapp) -> None:
+    """V1.0.1 regression: after a restart, navigating to a page must load
+    persisted data automatically (no manual Refresh/Search)."""
+    from typing import cast
+
+    from app.desktop.agreement_page import AgreementsPage
+    from app.desktop.dashboard_page import DashboardPage
+    from app.desktop.main_window import MainWindow
+    from app.desktop.tenant_page import TenantsPage
+
+    _seed_core_chain(runner)
+
+    window = MainWindow(database_session=app_window.database_session)
+
+    window.navigate("properties")
+    page = cast(PropertiesPage, window._pages["properties"])
+    assert page._property_model.rowCount() == 1
+    assert not page._property_table.isHidden()
+    assert page._list_empty.isHidden()
+
+    window.navigate("tenants")
+    tenant_page = cast(TenantsPage, window._pages["tenants"])
+    assert tenant_page._tenant_model.rowCount() == 1
+    assert not tenant_page._tenant_table.isHidden()
+
+    window.navigate("agreements")
+    agreement_page = cast(AgreementsPage, window._pages["agreements"])
+    assert agreement_page._agreement_model.rowCount() == 1
+
+    window.navigate("dashboard")
+    dashboard = cast(DashboardPage, window._pages["dashboard"])
+    assert dashboard._cards["properties"]._value_label.text() == "1"
+    assert dashboard._cards["spaces"]._value_label.text() == "1"
+
+
+@pytest.mark.integration
+def test_navigation_refreshes_cached_page_when_navigated_again(app_window, runner, qapp) -> None:
+    """V1.0.1 regression: re-entering an already-created page shows changes
+    made elsewhere."""
+    from typing import cast
+
+    from app.desktop.main_window import MainWindow
+
+    window = MainWindow(database_session=app_window.database_session)
+
+    window.navigate("properties")
+    page = cast(PropertiesPage, window._pages["properties"])
+    assert page._property_model.rowCount() == 0
+
+    owner = runner.run(lambda s: s.owner().create_owner(name="Owner Y", phone="9800000003"))
+    assert owner is not OPERATION_FAILED
+    prop = runner.run(
+        lambda s: s.property().create_property(owner.id, "Building Y", "Kathmandu")
+    )
+    assert prop is not OPERATION_FAILED
+
+    window.navigate("dashboard")
+    window.navigate("properties")
+    assert page._property_model.rowCount() == 1
+    assert page._property_model.data(page._property_model.index(0, 0)) == "Building Y"
+
+
+@pytest.mark.integration
+def test_agreement_dialog_tenant_selector_shows_persisted_tenants_after_restart(
+    app_window, runner, qapp
+) -> None:
+    """V1.0.1 regression: a freshly opened agreement dialog lists tenants that
+    were persisted in a previous session."""
+    from app.desktop.agreement_forms import AgreementFormDialog
+
+    chain = _seed_core_chain(runner)
+
+    dialog = AgreementFormDialog(
+        app_window.runner,
+        rental_space_id=chain["space"].id,
+        rental_space_label=chain["space"].name or "",
+    )
+    assert dialog._tenant_combo.count() >= 1
+    assert any(
+        dialog._tenant_combo.itemData(i) == chain["tenant"].id
+        for i in range(dialog._tenant_combo.count())
+    )
+
+
+@pytest.mark.integration
+def test_navigation_supports_pages_without_refresh(app_window, qapp) -> None:
+    """V1.0.1 regression: navigating to pages without a callable refresh()
+    (Settings, placeholder pages) must not fail."""
+    from app.desktop.components.page import PlaceholderPage
+    from app.desktop.main_window import MainWindow
+    from app.desktop.pages import build_navigation
+
+    window = app_window
+    window.navigate("settings")
+    assert window.current_key == "settings"
+    assert window._pages["settings"] is not None
+
+    placeholder_nav = build_navigation()
+    placeholder_window = MainWindow(
+        navigation=placeholder_nav, database_session=app_window.database_session
+    )
+    placeholder_window.navigate("properties")
+    assert isinstance(placeholder_window._pages["properties"], PlaceholderPage)
+    assert placeholder_window.current_key == "properties"

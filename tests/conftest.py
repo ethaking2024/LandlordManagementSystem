@@ -9,7 +9,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ.setdefault("APP_ENV", "testing")
-os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/lms_test")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
 
 

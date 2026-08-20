@@ -37,9 +37,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.unit
-def test_get_database_url() -> None:
-    os.environ["DATABASE_URL"] = "postgresql+psycopg://user:pass@localhost:5432/lms_dev"
-    os.environ["TEST_DATABASE_URL"] = "postgresql+psycopg://user:pass@localhost:5432/lms_test"
+def test_get_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/lms_dev")
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/lms_test")
 
     from app.core.config import get_settings
 

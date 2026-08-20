@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from PySide6.QtWidgets import QWidget
 
 from app.desktop.main_window import MainWindow
 from app.desktop.pages import build_navigation
@@ -10,12 +11,15 @@ from app.desktop.services import ServiceRunner
 
 @pytest.fixture
 def main_window(qapp) -> MainWindow:
-    return MainWindow()
+    """A MainWindow with placeholder navigation so unit tests never open a
+    database session (data pages expose refresh(); navigating would otherwise
+    hit PostgreSQL)."""
+    return MainWindow(navigation=build_navigation())
 
 
 @pytest.mark.unit
 def test_main_window_creation(qapp) -> None:
-    window = MainWindow()
+    window = MainWindow(navigation=build_navigation())
     assert window.windowTitle() == "Landlord Management System"
     assert window.current_key == "dashboard"
 
@@ -85,8 +89,12 @@ def test_page_title_updates(main_window: MainWindow) -> None:
 
 @pytest.mark.unit
 def test_placeholder_pages_have_coming_soon(main_window: MainWindow) -> None:
+    from typing import cast
+
+    from app.desktop.components.page import PlaceholderPage
+
     main_window.navigate("payments")
-    page = main_window._pages["payments"]
+    page = cast(PlaceholderPage, main_window._pages["payments"])
     assert page.title == "Payments"
 
 
@@ -116,8 +124,58 @@ def test_sidebar_version_label_shows_current_release(main_window: MainWindow) ->
 
 
 @pytest.mark.unit
-def test_main_window_uses_runner(qapp) -> None:
+def test_main_window_uses_runner(qapp, monkeypatch) -> None:
+    from app.desktop.services import OPERATION_FAILED
+
+    # Real pages refresh on navigation; return the failed sentinel so no real
+    # PostgreSQL session is opened from a unit test.
+    monkeypatch.setattr(
+        ServiceRunner, "run", lambda self, operation, parent=None: OPERATION_FAILED
+    )
     window = MainWindow()
     assert window.runner is not None
     window.navigate("properties")
     assert isinstance(window._pages["properties"], PropertiesPage)
+
+
+class _RefreshablePage(QWidget):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refresh_calls = 0
+
+    def refresh(self) -> None:
+        self.refresh_calls += 1
+
+
+class _NoRefreshPage(QWidget):
+    pass
+
+
+@pytest.mark.unit
+def test_navigate_invokes_refresh_when_page_provides_it(qapp) -> None:
+    """The navigation layer must load data on navigation: navigating to a page
+    that exposes a callable refresh() invokes it, while pages without refresh()
+    (Settings, placeholders) are left untouched."""
+    from app.desktop.navigation import NavigationRegistry, NavItem
+
+    refreshable = _RefreshablePage()
+    no_refresh = _NoRefreshPage()
+    nav = NavigationRegistry(
+        [
+            NavItem("home", "Home", lambda: refreshable),
+            NavItem("plain", "Plain", lambda: no_refresh),
+        ]
+    )
+    window = MainWindow(navigation=nav)
+    assert window.current_key == "home"
+    assert refreshable.refresh_calls == 1
+    assert no_refresh.__class__ is _NoRefreshPage
+
+    window.navigate("plain")
+    assert window.current_key == "plain"
+
+    window.navigate("home")
+    assert refreshable.refresh_calls == 2
+
+    window.navigate("plain")
+    assert refreshable.refresh_calls == 2

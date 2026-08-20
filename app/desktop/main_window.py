@@ -140,7 +140,13 @@ class MainWindow(QMainWindow):
         return self._runner
 
     def navigate(self, key: str) -> None:
-        """Switch to the page registered under ``key``."""
+        """Switch to the page registered under ``key``.
+
+        Pages are created lazily on first navigation. After a page is created or
+        retrieved from the stack, its ``refresh()`` is invoked when the page
+        provides a callable refresh method so data pages always show current
+        data when navigated to (including after an application restart).
+        """
         if not self._navigation.contains(key):
             raise ValueError(f"Unknown navigation key: {key}")
 
@@ -152,6 +158,10 @@ class MainWindow(QMainWindow):
 
         self._stack.setCurrentWidget(page)
         self._current_key = key
+
+        refresh = getattr(page, "refresh", None)
+        if callable(refresh):
+            refresh()
 
         item = self._navigation.get(key)
         self._page_title_label.setText(item.label)
